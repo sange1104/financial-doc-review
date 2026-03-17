@@ -1,6 +1,8 @@
 ---
 name: git-commit
 description: Create structured git commits with consistent style and project-aware rules
+disable-model-invocation: true
+argument-hint: [optional commit message override]
 ---
 
 # Git Commit Skill
