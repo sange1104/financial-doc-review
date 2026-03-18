@@ -1,0 +1,21 @@
+[project]
+name = "financial-doc-review"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "streamlit",
+    "pydantic",
+    "opencv-python",
+    "paddleocr",
+    "python-multipart",
+    "numpy",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
