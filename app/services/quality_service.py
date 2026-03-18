@@ -13,7 +13,7 @@ def evaluate_quality(image_path: str) -> ImageQualityResult:
         return ImageQualityResult(
             blur_score=None,
             glare_detected=None,
-            crop_detected=None,
+            low_resolution_detected=None,
             is_acceptable=False,
         )
 
@@ -27,19 +27,19 @@ def evaluate_quality(image_path: str) -> ImageQualityResult:
     bright_ratio = np.mean(gray > 250)
     glare_detected = bright_ratio > 0.3
 
-    # crop: 이미지가 너무 작으면 잘린 것으로 판단
-    crop_detected = h < MIN_IMAGE_SIZE or w < MIN_IMAGE_SIZE
+    # low resolution: 이미지가 너무 작으면 텍스트 인식 불가
+    low_resolution_detected = h < MIN_IMAGE_SIZE or w < MIN_IMAGE_SIZE
 
     # 종합 판정
     is_acceptable = (
         blur_score >= BLUR_THRESHOLD
         and not glare_detected
-        and not crop_detected
+        and not low_resolution_detected
     )
 
     return ImageQualityResult(
         blur_score=round(blur_score, 2),
         glare_detected=glare_detected,
-        crop_detected=crop_detected,
+        low_resolution_detected=low_resolution_detected,
         is_acceptable=is_acceptable,
     )

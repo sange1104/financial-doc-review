@@ -86,6 +86,6 @@ def _retake_reason(quality: ImageQualityResult) -> str:
         reasons.append(f"image too blurry (score: {quality.blur_score})")
     if quality.glare_detected:
         reasons.append("glare detected")
-    if quality.crop_detected:
-        reasons.append("image appears cropped")
+    if quality.low_resolution_detected:
+        reasons.append("image resolution too low")
     return "; ".join(reasons) if reasons else "image quality unacceptable"

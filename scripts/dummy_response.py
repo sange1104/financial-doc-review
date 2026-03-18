@@ -11,7 +11,7 @@ pass_response = DocumentReviewResponse(
     quality=ImageQualityResult(
         blur_score=12.5,
         glare_detected=False,
-        crop_detected=False,
+        low_resolution_detected=False,
         is_acceptable=True,
     ),
     ocr=OCRResult(
@@ -31,7 +31,7 @@ retake_response = DocumentReviewResponse(
     quality=ImageQualityResult(
         blur_score=85.3,
         glare_detected=False,
-        crop_detected=False,
+        low_resolution_detected=False,
         is_acceptable=False,
     ),
     ocr=OCRResult(fields=[], raw_text=None),
@@ -45,7 +45,7 @@ review_response = DocumentReviewResponse(
     quality=ImageQualityResult(
         blur_score=20.1,
         glare_detected=True,
-        crop_detected=False,
+        low_resolution_detected=False,
         is_acceptable=True,
     ),
     ocr=OCRResult(
