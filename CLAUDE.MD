@@ -1,5 +1,10 @@
 # Project Context
 
+## Environment
+
+- Use conda environment `ocr` as the default environment.
+  - Activate with: `conda activate ocr`
+
 ## Goal
 Build an MVP for financial document review as a decision-making problem under imperfect inputs.
 
