@@ -1,7 +1,7 @@
 import os
 import tempfile
 
-from fastapi import APIRouter, UploadFile
+from fastapi import APIRouter, HTTPException, UploadFile
 
 from app.schemas.decision import DocumentReviewResponse
 from app.services.ocr_service import extract_ocr
@@ -13,6 +13,9 @@ router = APIRouter()
 
 @router.post("/review", response_model=DocumentReviewResponse)
 async def review_document(file: UploadFile):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are supported")
+
     suffix = os.path.splitext(file.filename or ".png")[1]
 
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
