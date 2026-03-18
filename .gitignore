@@ -19,5 +19,7 @@ venv/
 Thumbs.db
 
 # Data
-samples/raw/*
-!samples/raw/.gitkeep
+samples/**/*.png
+samples/**/*.jpg
+samples/**/*.jpeg
+!samples/**/.gitkeep
