@@ -4,6 +4,8 @@ from app.schemas.decision import Decision, DocumentReviewResponse
 from app.schemas.document import DocumentType
 from app.schemas.ocr import OCRResult
 from app.schemas.quality import ImageQualityResult
+from app.services.ocr_service import extract_ocr
+from app.services.quality_service import evaluate_quality
 
 ID_NUMBER_PATTERN = re.compile(r"^\d{6}-\d{7}$")
 MIN_CONFIDENCE = 0.7
@@ -17,20 +19,25 @@ def _get_field(ocr: OCRResult, field_name: str):
     return None
 
 
-def decide(quality: ImageQualityResult, ocr: OCRResult) -> DocumentReviewResponse:
-    doc_title = _get_field(ocr, "doc_title")
-    name = _get_field(ocr, "name")
-    id_number = _get_field(ocr, "id_number")
+def evaluate(image_path: str) -> DocumentReviewResponse:
+    quality = evaluate_quality(image_path)
 
-    # --- Step 1: retake (품질 문제) ---
+    # --- Step 1: retake (품질 문제) → OCR 스킵 ---
     if not quality.is_acceptable:
         return DocumentReviewResponse(
             document_type=DocumentType.UNKNOWN,
             decision=Decision.RETAKE,
             reason=_retake_reason(quality),
             quality=quality,
-            ocr=ocr,
+            ocr=OCRResult(),
         )
+
+    # --- Step 2: OCR 추출 ---
+    ocr = extract_ocr(image_path)
+
+    doc_title = _get_field(ocr, "doc_title")
+    name = _get_field(ocr, "name")
+    id_number = _get_field(ocr, "id_number")
 
     # OCR 결과가 극단적으로 적으면 retake
     raw_len = len(ocr.raw_text) if ocr.raw_text else 0
@@ -46,7 +53,7 @@ def decide(quality: ImageQualityResult, ocr: OCRResult) -> DocumentReviewRespons
     # --- 문서 타입 판별 ---
     doc_type = DocumentType.ID_CARD if doc_title else DocumentType.UNKNOWN
 
-    # --- Step 2: review (정보 불완전 / 신뢰도 낮음) ---
+    # --- Step 3: review (정보 불완전 / 신뢰도 낮음) ---
     review_reasons: list[str] = []
 
     if not name:
@@ -70,7 +77,7 @@ def decide(quality: ImageQualityResult, ocr: OCRResult) -> DocumentReviewRespons
             ocr=ocr,
         )
 
-    # --- Step 3: pass ---
+    # --- Step 4: pass ---
     return DocumentReviewResponse(
         document_type=doc_type,
         decision=Decision.PASS,

@@ -4,9 +4,7 @@ import tempfile
 from fastapi import APIRouter, HTTPException, UploadFile
 
 from app.schemas.decision import DocumentReviewResponse
-from app.services.ocr_service import extract_ocr
-from app.services.quality_service import evaluate_quality
-from app.services.rule_engine import decide
+from app.services.rule_engine import evaluate
 
 router = APIRouter()
 
@@ -23,9 +21,7 @@ async def review_document(file: UploadFile):
         tmp_path = tmp.name
 
     try:
-        quality = evaluate_quality(tmp_path)
-        ocr = extract_ocr(tmp_path)
-        result = decide(quality, ocr)
+        result = evaluate(tmp_path)
     finally:
         os.unlink(tmp_path)
 
