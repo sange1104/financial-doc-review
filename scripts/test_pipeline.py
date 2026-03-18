@@ -5,7 +5,7 @@ from app.services.ocr_service import extract_ocr
 from app.services.quality_service import evaluate_quality
 from app.services.rule_engine import decide
 
-image_paths = glob.glob("samples/valid/*.png") + glob.glob("samples/valid/*.jpg")
+image_paths = glob.glob("samples/glare/*.png") + glob.glob("samples/glare/*.jpg")
 
 for path in sorted(image_paths):
     print(f"\n{'='*60}")
