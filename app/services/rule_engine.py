@@ -4,7 +4,7 @@ from app.schemas.decision import Decision, DocumentReviewResponse
 from app.schemas.document import DocumentType
 from app.schemas.ocr import OCRResult
 from app.schemas.quality import ImageQualityResult
-from app.services.ocr_service import extract_ocr
+from app.services.ocr_service import extract_bank_account, extract_id_card
 from app.services.quality_service import evaluate_quality
 
 ID_NUMBER_PATTERN = re.compile(r"^\d{6}-\d{7}$")
@@ -19,42 +19,51 @@ def _get_field(ocr: OCRResult, field_name: str):
     return None
 
 
-def evaluate(image_path: str) -> DocumentReviewResponse:
-    quality = evaluate_quality(image_path)
-
-    # --- Step 1: retake (품질 문제) → OCR 스킵 ---
+def _check_retake(quality: ImageQualityResult, doc_type: DocumentType) -> DocumentReviewResponse | None:
+    """품질 불량이면 retake 반환, 아니면 None."""
     if not quality.is_acceptable:
         return DocumentReviewResponse(
-            document_type=DocumentType.UNKNOWN,
+            document_type=doc_type,
             decision=Decision.RETAKE,
             reason=_retake_reason(quality),
             quality=quality,
             ocr=OCRResult(),
         )
+    return None
 
-    # --- Step 2: OCR 추출 ---
-    ocr = extract_ocr(image_path)
 
-    doc_title = _get_field(ocr, "doc_title")
-    name = _get_field(ocr, "name")
-    id_number = _get_field(ocr, "id_number")
-
-    # OCR 결과가 극단적으로 적으면 retake
+def _check_empty_ocr(quality: ImageQualityResult, ocr: OCRResult, doc_type: DocumentType) -> DocumentReviewResponse | None:
+    """OCR 결과가 극단적으로 적으면 retake 반환."""
     raw_len = len(ocr.raw_text) if ocr.raw_text else 0
+    doc_title = _get_field(ocr, "doc_title")
     if raw_len < MIN_RAW_TEXT_LENGTH and not doc_title:
         return DocumentReviewResponse(
-            document_type=DocumentType.UNKNOWN,
+            document_type=doc_type,
             decision=Decision.RETAKE,
             reason="OCR extracted too little text from image",
             quality=quality,
             ocr=ocr,
         )
+    return None
 
-    # --- 문서 타입 판별 ---
-    doc_type = DocumentType.ID_CARD if doc_title else DocumentType.UNKNOWN
 
-    # --- Step 3: review (정보 불완전 / 신뢰도 낮음) ---
+def evaluate_id_card(image_path: str) -> DocumentReviewResponse:
+    quality = evaluate_quality(image_path)
+
+    retake = _check_retake(quality, DocumentType.ID_CARD)
+    if retake:
+        return retake
+
+    ocr = extract_id_card(image_path)
+
+    empty = _check_empty_ocr(quality, ocr, DocumentType.ID_CARD)
+    if empty:
+        return empty
+
+    # review 검증: name + id_number
     review_reasons: list[str] = []
+    name = _get_field(ocr, "name")
+    id_number = _get_field(ocr, "id_number")
 
     if not name:
         review_reasons.append("name field not found")
@@ -70,16 +79,61 @@ def evaluate(image_path: str) -> DocumentReviewResponse:
 
     if review_reasons:
         return DocumentReviewResponse(
-            document_type=doc_type,
+            document_type=DocumentType.ID_CARD,
             decision=Decision.REVIEW,
             reason="; ".join(review_reasons),
             quality=quality,
             ocr=ocr,
         )
 
-    # --- Step 4: pass ---
     return DocumentReviewResponse(
-        document_type=doc_type,
+        document_type=DocumentType.ID_CARD,
+        decision=Decision.PASS,
+        reason="All required fields present and valid",
+        quality=quality,
+        ocr=ocr,
+    )
+
+
+def evaluate_bank_account(image_path: str) -> DocumentReviewResponse:
+    quality = evaluate_quality(image_path)
+
+    retake = _check_retake(quality, DocumentType.BANK_ACCOUNT_DOC)
+    if retake:
+        return retake
+
+    ocr = extract_bank_account(image_path)
+
+    empty = _check_empty_ocr(quality, ocr, DocumentType.BANK_ACCOUNT_DOC)
+    if empty:
+        return empty
+
+    # review 검증: name + account_number
+    review_reasons: list[str] = []
+    name = _get_field(ocr, "name")
+    account_number = _get_field(ocr, "account_number")
+
+    if not name:
+        review_reasons.append("name field not found")
+    elif name.confidence < MIN_CONFIDENCE:
+        review_reasons.append(f"name confidence too low ({name.confidence:.2f})")
+
+    if not account_number:
+        review_reasons.append("account_number field not found")
+    elif account_number.confidence < MIN_CONFIDENCE:
+        review_reasons.append(f"account_number confidence too low ({account_number.confidence:.2f})")
+
+    if review_reasons:
+        return DocumentReviewResponse(
+            document_type=DocumentType.BANK_ACCOUNT_DOC,
+            decision=Decision.REVIEW,
+            reason="; ".join(review_reasons),
+            quality=quality,
+            ocr=ocr,
+        )
+
+    return DocumentReviewResponse(
+        document_type=DocumentType.BANK_ACCOUNT_DOC,
         decision=Decision.PASS,
         reason="All required fields present and valid",
         quality=quality,
