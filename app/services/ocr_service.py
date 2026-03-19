@@ -8,6 +8,7 @@ _ocr = PaddleOCR(use_textline_orientation=True, lang="korean")
 
 ID_NUMBER_PATTERN = re.compile(r"\d{6}-\d{7}")
 ACCOUNT_NUMBER_PATTERN = re.compile(r"\d{2,4}[-]\d{2,4}[-]\d{2,4}([-]\d{2,4})?")
+BANK_NAMES = ["농협", "NH", "우리", "국민", "신한", "하나", "기업", "SC", "카카오", "토스", "케이"]
 
 
 def _run_ocr(image_path: str) -> tuple[list[str], list[float]]:
@@ -61,6 +62,7 @@ def extract_bank_account(image_path: str) -> OCRResult:
     raw_lines: list[str] = []
     has_account = False
     has_name = False
+    has_bank = False
 
     for i, (text, score) in enumerate(zip(texts, scores)):
         text = text.strip()
@@ -68,12 +70,19 @@ def extract_bank_account(image_path: str) -> OCRResult:
             continue
         raw_lines.append(text)
 
-        # doc_title: 통장사본 키워드 또는 은행명
+        # doc_title: 통장사본 키워드
         if any(kw in text for kw in ["통장사본", "통장"]) and not any(
             f.field_name == "doc_title" for f in fields
         ):
             fields.append(OCRField(field_name="doc_title", value=text, confidence=score))
             continue
+
+        # bank_name: 은행명 인식 (짧은 텍스트만, 문장 제외)
+        if not has_bank and score >= 0.7 and len(text) <= 15:
+            if any(bank in text for bank in BANK_NAMES) and ("은행" in text or "Bank" in text.title()):
+                fields.append(OCRField(field_name="bank_name", value=text, confidence=score))
+                has_bank = True
+                continue
 
         # account_number: "계좌번호" 라벨과 같은 줄 또는 다음 줄
         if not has_account:

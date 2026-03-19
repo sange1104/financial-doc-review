@@ -108,10 +108,11 @@ def evaluate_bank_account(image_path: str) -> DocumentReviewResponse:
     if empty:
         return empty
 
-    # review 검증: name + account_number
+    # review 검증: name + account_number + bank_name
     review_reasons: list[str] = []
     name = _get_field(ocr, "name")
     account_number = _get_field(ocr, "account_number")
+    bank_name = _get_field(ocr, "bank_name")
 
     if not name:
         review_reasons.append("name field not found")
@@ -122,6 +123,11 @@ def evaluate_bank_account(image_path: str) -> DocumentReviewResponse:
         review_reasons.append("account_number field not found")
     elif account_number.confidence < MIN_CONFIDENCE:
         review_reasons.append(f"account_number confidence too low ({account_number.confidence:.2f})")
+
+    if not bank_name:
+        review_reasons.append("bank_name field not found")
+    elif bank_name.confidence < MIN_CONFIDENCE:
+        review_reasons.append(f"bank_name confidence too low ({bank_name.confidence:.2f})")
 
     if review_reasons:
         return DocumentReviewResponse(
