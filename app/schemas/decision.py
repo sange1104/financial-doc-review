@@ -11,6 +11,7 @@ class Decision(str, Enum):
     PASS = "pass"
     RETAKE = "retake"
     REVIEW = "review"
+    INVALID_DOC_TYPE = "invalid_doc_type"
 
 
 class DocumentReviewResponse(BaseModel):

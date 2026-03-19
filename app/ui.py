@@ -30,6 +30,12 @@ DECISION_CONFIG = {
         "bg": "linear-gradient(135deg, #ff9100, #ffd180)",
         "msg": "담당자 확인이 필요합니다.",
     },
+    "invalid_doc_type": {
+        "icon": "⚠️",
+        "label": "INVALID DOCUMENT",
+        "bg": "linear-gradient(135deg, #6a1b9a, #ce93d8)",
+        "msg": "올바른 문서 유형을 업로드해주세요.",
+    },
 }
 
 st.set_page_config(page_title="Document Review", layout="centered", page_icon="🔍")
