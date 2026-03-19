@@ -34,6 +34,9 @@ DECISION_CONFIG = {
 
 st.set_page_config(page_title="Document Review", layout="centered", page_icon="🔍")
 
+# 다크모드 감지
+is_dark = st.get_option("theme.base") == "dark"
+
 # 글로벌 스타일
 st.markdown("""
 <style>
@@ -41,19 +44,8 @@ st.markdown("""
         text-align: center;
         padding: 30px 0 10px 0;
     }
-    .main-header h1 {
-        font-size: 2.5em;
-        background: linear-gradient(120deg, #1a237e, #4a148c) !important;
-        -webkit-background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        background-clip: text !important;
-        color: transparent !important;
-        margin-bottom: 5px;
-    }
-    .main-header p {
-        color: #888;
-        font-size: 1.1em;
-    }
+    .title-text { color: #1a237e; }
+    .subtitle-badge { background: #e8eaf6; color: #4a148c; }
     .decision-banner {
         padding: 30px;
         border-radius: 16px;
@@ -147,8 +139,8 @@ st.markdown("""
 # 헤더
 st.markdown("""
 <div style="text-align: center; padding: 30px 0 10px 0;">
-    <div style="font-size: 2.8em; font-weight: 800; color: #1a237e; letter-spacing: -1px;">🔍 Document Review</div>
-    <div style="display: inline-block; margin-top: 8px; padding: 6px 24px; background: #e8eaf6; border-radius: 20px; color: #4a148c; font-weight: 600; font-size: 0.95em;">신분증 및 통장사본 자동 검증 시스템</div>
+    <div style="font-size: 2.8em; font-weight: 800; letter-spacing: -1px; color: {'#e8eaff' if is_dark else '#1a237e'};">🔍 Document Review</div>
+    <div style="display: inline-block; margin-top: 8px; padding: 6px 24px; border-radius: 20px; font-weight: 600; font-size: 0.95em; background: {'#3d37a1' if is_dark else '#e8eaf6'}; color: {'#e8d5ff' if is_dark else '#4a148c'};">신분증 및 통장사본 자동 검증 시스템</div>
 </div>
 """, unsafe_allow_html=True)
 
