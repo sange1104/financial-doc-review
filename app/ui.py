@@ -1,19 +1,23 @@
 import requests
 import streamlit as st
 
-API_URL = "http://localhost:8001/api/review"
+API_BASE = "http://localhost:8001/api/review"
 
 st.set_page_config(page_title="Document Review", layout="centered")
 st.title("Financial Document Review")
+
+doc_type = st.radio("문서 유형을 선택하세요", ["신분증", "통장사본"], horizontal=True)
 
 uploaded = st.file_uploader("문서 이미지를 업로드하세요", type=["png", "jpg", "jpeg"])
 
 if uploaded:
     st.image(uploaded, caption="업로드된 이미지", use_container_width=True)
 
+    endpoint = f"{API_BASE}/id-card" if doc_type == "신분증" else f"{API_BASE}/bank-account"
+
     with st.spinner("분석 중..."):
         resp = requests.post(
-            API_URL,
+            endpoint,
             files={"file": (uploaded.name, uploaded.getvalue(), uploaded.type)},
         )
 
