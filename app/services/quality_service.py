@@ -23,9 +23,11 @@ def evaluate_quality(image_path: str) -> ImageQualityResult:
     # blur: Laplacian variance (낮을수록 흐릿함)
     blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
 
-    # glare: 과도하게 밝은 영역 비율
-    bright_ratio = np.mean(gray > 250)
-    glare_detected = bright_ratio > 0.3
+    # glare: MVP에서는 비활성화
+    # 문서 배경(특히 통장사본)이 흰색인 경우와 실제 glare를
+    # 단순 픽셀 비율만으로 구분할 수 없음
+    # TODO: gradient 기반 또는 학습 기반 glare 감지로 개선
+    glare_detected = False
 
     # low resolution: 이미지가 너무 작으면 텍스트 인식 불가
     low_resolution_detected = h < MIN_IMAGE_SIZE or w < MIN_IMAGE_SIZE
