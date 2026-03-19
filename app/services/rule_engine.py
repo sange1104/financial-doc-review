@@ -107,27 +107,36 @@ def _gate2_document_type(ocr: OCRResult, expected_type: DocumentType, quality: I
 # ──────────────────────────────────────────────
 
 def _gate3_required_fields_id(ocr: OCRResult, quality: ImageQualityResult) -> DocumentReviewResponse | None:
-    """신분증 필수 필드 존재 여부 검증."""
+    """신분증 필수 필드 존재 여부 + glare 조합 검증."""
     raw_len = len(ocr.raw_text) if ocr.raw_text else 0
     name = _get_field(ocr, "name")
     id_number = _get_field(ocr, "id_number")
+    glare = quality.glare_detected
 
     # OCR 결과가 극단적으로 적으면 retake
     if raw_len < MIN_RAW_TEXT_LENGTH:
         return _response(DocumentType.ID_CARD, Decision.RETAKE,
                          "OCR extracted too little text from image", quality, ocr)
 
-    # 필수 필드 완전 누락이면 retake (품질 문제일 가능성)
+    # glare + 필수 필드 전부 없음 → retake (glare가 원인)
     if not name and not id_number:
-        return _response(DocumentType.ID_CARD, Decision.RETAKE,
-                         "No required fields (name, id_number) could be extracted", quality, ocr)
+        reason = "No required fields (name, id_number) could be extracted"
+        if glare:
+            reason = "Glare obscured document; " + reason
+        return _response(DocumentType.ID_CARD, Decision.RETAKE, reason, quality, ocr)
 
-    # 일부만 누락이면 review
+    # 일부 누락
     review_reasons: list[str] = []
     if not name:
         review_reasons.append("name field not found")
     if not id_number:
         review_reasons.append("id_number field not found")
+
+    # glare + 일부 필드 애매 → review에 glare 언급 추가
+    if glare and review_reasons:
+        review_reasons.insert(0, "glare detected on document")
+
+    # glare 있지만 필드 다 있으면 → 통과 (pass 가능)
 
     if review_reasons:
         return _response(DocumentType.ID_CARD, Decision.REVIEW,
@@ -137,20 +146,23 @@ def _gate3_required_fields_id(ocr: OCRResult, quality: ImageQualityResult) -> Do
 
 
 def _gate3_required_fields_bank(ocr: OCRResult, quality: ImageQualityResult) -> DocumentReviewResponse | None:
-    """통장사본 필수 필드 존재 여부 검증."""
+    """통장사본 필수 필드 존재 여부 + glare 조합 검증."""
     raw_len = len(ocr.raw_text) if ocr.raw_text else 0
     name = _get_field(ocr, "name")
     account_number = _get_field(ocr, "account_number")
     bank_name = _get_field(ocr, "bank_name")
+    glare = quality.glare_detected
 
     if raw_len < MIN_RAW_TEXT_LENGTH:
         return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.RETAKE,
                          "OCR extracted too little text from image", quality, ocr)
 
-    # 핵심 필드(이름+계좌) 모두 없으면 retake
+    # glare + 핵심 필드 전부 없음 → retake
     if not name and not account_number:
-        return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.RETAKE,
-                         "No required fields (name, account_number) could be extracted", quality, ocr)
+        reason = "No required fields (name, account_number) could be extracted"
+        if glare:
+            reason = "Glare obscured document; " + reason
+        return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.RETAKE, reason, quality, ocr)
 
     review_reasons: list[str] = []
     if not name:
@@ -159,6 +171,9 @@ def _gate3_required_fields_bank(ocr: OCRResult, quality: ImageQualityResult) -> 
         review_reasons.append("account_number field not found")
     if not bank_name:
         review_reasons.append("bank_name field not found")
+
+    if glare and review_reasons:
+        review_reasons.insert(0, "glare detected on document")
 
     if review_reasons:
         return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.REVIEW,

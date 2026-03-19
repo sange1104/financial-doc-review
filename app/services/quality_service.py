@@ -5,6 +5,7 @@ from app.schemas.quality import ImageQualityResult
 
 BLUR_THRESHOLD = 100.0
 MIN_IMAGE_SIZE = 100
+GLARE_SATURATED_RATIO = 0.05
 
 
 def evaluate_quality(image_path: str) -> ImageQualityResult:
@@ -23,19 +24,30 @@ def evaluate_quality(image_path: str) -> ImageQualityResult:
     # blur: Laplacian variance (낮을수록 흐릿함)
     blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
 
-    # glare: MVP에서는 비활성화
-    # 문서 배경(특히 통장사본)이 흰색인 경우와 실제 glare를
-    # 단순 픽셀 비율만으로 구분할 수 없음
-    # TODO: gradient 기반 또는 학습 기반 glare 감지로 개선
-    glare_detected = False
+    # glare: 포화 영역(255)의 국소 집중도로 판단
+    # 문서 배경의 균일한 밝음과 구분하기 위해
+    # 포화 영역이 존재하면서 그 주변에 밝기 변화가 급격한 경우 glare로 판단
+    saturated_mask = (gray == 255).astype(np.uint8)
+    saturated_ratio = np.mean(saturated_mask)
+
+    if saturated_ratio > GLARE_SATURATED_RATIO:
+        # 포화 영역의 경계에서 gradient가 강한지 확인
+        gradient = cv2.Sobel(gray, cv2.CV_64F, 1, 1)
+        grad_at_edge = cv2.dilate(saturated_mask, None) - saturated_mask
+        if np.sum(grad_at_edge) > 0:
+            mean_grad = np.mean(np.abs(gradient[grad_at_edge > 0]))
+            glare_detected = mean_grad > 30
+        else:
+            glare_detected = False
+    else:
+        glare_detected = False
 
     # low resolution: 이미지가 너무 작으면 텍스트 인식 불가
     low_resolution_detected = h < MIN_IMAGE_SIZE or w < MIN_IMAGE_SIZE
 
-    # 종합 판정
+    # 종합 판정: glare는 포함하지 않음 (OCR 결과와 조합하여 판단)
     is_acceptable = (
         blur_score >= BLUR_THRESHOLD
-        and not glare_detected
         and not low_resolution_detected
     )
 
