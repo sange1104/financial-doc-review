@@ -296,6 +296,20 @@ if decision == "retake":
         <div class="retake-action">👉 {retake_guide}</div>
     </div>
     """, unsafe_allow_html=True)
+elif decision == "invalid_doc_type":
+    detected = data.get("document_type", "")
+    if detected == "id_card":
+        inv_label = "⚠️ 신분증이 감지되었습니다. 통장사본을 업로드해주세요."
+    elif detected == "bank_account_doc":
+        inv_label = "⚠️ 통장사본이 감지되었습니다. 신분증을 업로드해주세요."
+    else:
+        inv_label = "⚠️ 선택한 문서 유형과 다른 문서가 감지되었습니다."
+    st.markdown(f"""
+    <div class="retake-guide" style="border-left-color: #6a1b9a; background: #f3e5f5;">
+        <div class="retake-label">{inv_label}</div>
+        <div class="retake-action">👉 올바른 문서를 선택하거나, 정확한 문서를 업로드해주세요.</div>
+    </div>
+    """, unsafe_allow_html=True)
 elif decision == "review":
     reasons_kr = _get_review_reasons_kr(data["reason"])
     reasons_html = "".join(f"<li>{r}</li>" for r in reasons_kr)
