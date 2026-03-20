@@ -11,7 +11,9 @@ from app.services.ocr_service import extract_bank_account, extract_id_card
 from app.services.quality_service import BLUR_THRESHOLD, evaluate_quality
 
 ID_NUMBER_PATTERN = re.compile(r"^\d{6}-\d{7}$")
-MIN_CONFIDENCE = 0.7
+CRITICAL_CONFIDENCE = 0.7   # 핵심 필드 (id_number, account_number)
+NAME_CONFIDENCE = 0.6       # 이름 (heuristic 추출이라 기준 낮춤)
+SECONDARY_CONFIDENCE = 0.5  # 보조 필드 (bank_name)
 MIN_RAW_TEXT_LENGTH = 10
 MIN_IMAGE_PIXELS = 100
 BLACK_WHITE_THRESHOLD = 0.95
@@ -270,19 +272,23 @@ def _gate3_required_fields_bank(ocr: OCRResult, quality: ImageQualityResult) -> 
 # ──────────────────────────────────────────────
 
 def _gate4_validation_id(ocr: OCRResult, quality: ImageQualityResult) -> DocumentReviewResponse | None:
-    """신분증 형식 검증 및 confidence 확인."""
+    """신분증 필드별 형식 검증 및 confidence 확인.
+    - id_number: 핵심 필드 (CRITICAL_CONFIDENCE + 형식 검증)
+    - name: 이름 필드 (NAME_CONFIDENCE)"""
     name = _get_field(ocr, "name")
     id_number = _get_field(ocr, "id_number")
     review_reasons: list[str] = []
 
-    if name and name.confidence < MIN_CONFIDENCE:
-        review_reasons.append(f"name confidence too low ({name.confidence:.2f})")
-
+    # 핵심: id_number 형식 + confidence
     if id_number:
         if not ID_NUMBER_PATTERN.match(id_number.value or ""):
             review_reasons.append(f"id_number format invalid: {id_number.value}")
-        elif id_number.confidence < MIN_CONFIDENCE:
+        elif id_number.confidence < CRITICAL_CONFIDENCE:
             review_reasons.append(f"id_number confidence too low ({id_number.confidence:.2f})")
+
+    # 이름: heuristic 추출이므로 기준 낮춤
+    if name and name.confidence < NAME_CONFIDENCE:
+        review_reasons.append(f"name confidence too low ({name.confidence:.2f})")
 
     if review_reasons:
         return _response(DocumentType.ID_CARD, Decision.REVIEW,
@@ -292,19 +298,25 @@ def _gate4_validation_id(ocr: OCRResult, quality: ImageQualityResult) -> Documen
 
 
 def _gate4_validation_bank(ocr: OCRResult, quality: ImageQualityResult) -> DocumentReviewResponse | None:
-    """통장사본 형식 검증 및 confidence 확인."""
+    """통장사본 필드별 형식 검증 및 confidence 확인.
+    - account_number: 핵심 필드 (CRITICAL_CONFIDENCE)
+    - name: 이름 필드 (NAME_CONFIDENCE)
+    - bank_name: 보조 필드 (SECONDARY_CONFIDENCE)"""
     name = _get_field(ocr, "name")
     account_number = _get_field(ocr, "account_number")
     bank_name = _get_field(ocr, "bank_name")
     review_reasons: list[str] = []
 
-    if name and name.confidence < MIN_CONFIDENCE:
-        review_reasons.append(f"name confidence too low ({name.confidence:.2f})")
-
-    if account_number and account_number.confidence < MIN_CONFIDENCE:
+    # 핵심: account_number confidence
+    if account_number and account_number.confidence < CRITICAL_CONFIDENCE:
         review_reasons.append(f"account_number confidence too low ({account_number.confidence:.2f})")
 
-    if bank_name and bank_name.confidence < MIN_CONFIDENCE:
+    # 이름
+    if name and name.confidence < NAME_CONFIDENCE:
+        review_reasons.append(f"name confidence too low ({name.confidence:.2f})")
+
+    # 보조: bank_name
+    if bank_name and bank_name.confidence < SECONDARY_CONFIDENCE:
         review_reasons.append(f"bank_name confidence too low ({bank_name.confidence:.2f})")
 
     if review_reasons:
