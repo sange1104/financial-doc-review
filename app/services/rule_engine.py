@@ -76,13 +76,16 @@ def _gate1_input_validity(image_path: str, quality: ImageQualityResult, doc_type
 # Gate 2: 문서 유형 검증
 # ──────────────────────────────────────────────
 
-def _gate2_document_type(ocr: OCRResult, expected_type: DocumentType, quality: ImageQualityResult) -> DocumentReviewResponse | None:
-    """OCR 결과에서 문서 유형이 기대와 맞는지 검증한다."""
+def _gate2_document_type(ocr: OCRResult, expected_type: DocumentType, quality: ImageQualityResult, image_path: str) -> DocumentReviewResponse | None:
+    """OCR 결과에서 문서 유형이 기대와 맞는지 검증한다.
+    애매한 경우 VLM을 호출한다."""
     raw = ocr.raw_text or ""
+    raw_len = len(raw)
 
     has_id_signals = any(kw in raw for kw in ID_CARD_KEYWORDS)
     has_bank_signals = any(kw in raw for kw in BANK_KEYWORDS)
 
+    # 명확히 mismatch → 바로 invalid_doc_type
     if expected_type == DocumentType.ID_CARD and has_bank_signals and not has_id_signals:
         return _response(
             DocumentType.BANK_ACCOUNT_DOC,
@@ -99,7 +102,55 @@ def _gate2_document_type(ocr: OCRResult, expected_type: DocumentType, quality: I
             quality, ocr,
         )
 
+    # 명확히 match → 통과
+    if expected_type == DocumentType.ID_CARD and has_id_signals:
+        return None
+    if expected_type == DocumentType.BANK_ACCOUNT_DOC and has_bank_signals:
+        return None
+
+    # 애매한 경우: 키워드 없음 / 양쪽 혼재 / OCR 텍스트 부족 → VLM 호출
+    is_ambiguous = (
+        (not has_id_signals and not has_bank_signals)
+        or (has_id_signals and has_bank_signals)
+        or raw_len < MIN_RAW_TEXT_LENGTH
+    )
+
+    if is_ambiguous:
+        return _gate2_vlm_fallback(image_path, expected_type, quality, ocr)
+
     return None
+
+
+def _gate2_vlm_fallback(image_path: str, expected_type: DocumentType, quality: ImageQualityResult, ocr: OCRResult) -> DocumentReviewResponse | None:
+    """VLM으로 문서 유형을 분류한다."""
+    from app.services.vlm_service import classify_document_type
+
+    vlm_type = classify_document_type(image_path)
+
+    expected_vlm = "id_card" if expected_type == DocumentType.ID_CARD else "bank_account"
+
+    if vlm_type == expected_vlm:
+        return None  # match → 통과
+
+    if vlm_type == "unknown":
+        return _response(
+            DocumentType.UNKNOWN,
+            Decision.REVIEW,
+            "VLM could not determine document type",
+            quality, ocr,
+        )
+
+    # VLM이 다른 타입으로 판정
+    detected = DocumentType.ID_CARD if vlm_type == "id_card" else DocumentType.BANK_ACCOUNT_DOC
+    expected_label = "ID card" if expected_type == DocumentType.ID_CARD else "bank account"
+    detected_label = "ID card" if vlm_type == "id_card" else "bank account"
+
+    return _response(
+        detected,
+        Decision.INVALID_DOC_TYPE,
+        f"Expected {expected_label} but VLM detected {detected_label}",
+        quality, ocr,
+    )
 
 
 # ──────────────────────────────────────────────
@@ -247,7 +298,7 @@ def evaluate_id_card(image_path: str) -> DocumentReviewResponse:
     ocr = extract_id_card(image_path)
 
     # Gate 2: 문서 유형
-    result = _gate2_document_type(ocr, DocumentType.ID_CARD, quality)
+    result = _gate2_document_type(ocr, DocumentType.ID_CARD, quality, image_path)
     if result:
         return result
 
@@ -278,7 +329,7 @@ def evaluate_bank_account(image_path: str) -> DocumentReviewResponse:
     ocr = extract_bank_account(image_path)
 
     # Gate 2: 문서 유형
-    result = _gate2_document_type(ocr, DocumentType.BANK_ACCOUNT_DOC, quality)
+    result = _gate2_document_type(ocr, DocumentType.BANK_ACCOUNT_DOC, quality, image_path)
     if result:
         return result
 
