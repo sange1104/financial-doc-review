@@ -93,6 +93,8 @@ REVIEW_REASONS = {
     "bank_name field not found": "🏦 은행명을 찾을 수 없습니다",
     "bank_name confidence too low": "🏦 은행명 인식 신뢰도가 낮습니다",
     "glare detected on document": "💡 문서에서 빛반사가 감지되었습니다",
+    "image too blurry": "📷 이미지가 흐릿합니다",
+    "image resolution too low": "📐 이미지 해상도가 낮습니다",
 }
 
 

@@ -45,11 +45,9 @@ def evaluate_quality(image_path: str) -> ImageQualityResult:
     # low resolution: 이미지가 너무 작으면 텍스트 인식 불가
     low_resolution_detected = h < MIN_IMAGE_SIZE or w < MIN_IMAGE_SIZE
 
-    # 종합 판정: glare는 포함하지 않음 (OCR 결과와 조합하여 판단)
-    is_acceptable = (
-        blur_score >= BLUR_THRESHOLD
-        and not low_resolution_detected
-    )
+    # 종합 판정: blur, 저해상도, glare는 기록만 하고 OCR 결과와 조합하여 판단
+    # is_acceptable은 Gate 1에서 파일 읽기/크기/black/white 같은 치명적 문제만 반영
+    is_acceptable = True
 
     return ImageQualityResult(
         blur_score=round(blur_score, 2),

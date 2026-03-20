@@ -17,10 +17,11 @@ def _load_model():
         model_dir = snapshots[0] if snapshots else MODEL_PATH
 
         _processor = AutoProcessor.from_pretrained(model_dir)
+        import torch
         _model = AutoModelForImageTextToText.from_pretrained(
             model_dir,
-            torch_dtype="auto",
-            device_map="auto",
+            torch_dtype=torch.bfloat16,
+            device_map={"": "cuda:5"},
         )
     return _model, _processor
 

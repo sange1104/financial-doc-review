@@ -8,7 +8,7 @@ from app.schemas.document import DocumentType
 from app.schemas.ocr import OCRResult
 from app.schemas.quality import ImageQualityResult
 from app.services.ocr_service import extract_bank_account, extract_id_card
-from app.services.quality_service import evaluate_quality
+from app.services.quality_service import BLUR_THRESHOLD, evaluate_quality
 
 ID_NUMBER_PATTERN = re.compile(r"^\d{6}-\d{7}$")
 MIN_CONFIDENCE = 0.7
@@ -43,7 +43,8 @@ def _response(doc_type, decision, reason, quality, ocr=None):
 # ──────────────────────────────────────────────
 
 def _gate1_input_validity(image_path: str, quality: ImageQualityResult, doc_type: DocumentType) -> DocumentReviewResponse | None:
-    """이미지 자체가 유효한지 검증한다."""
+    """OCR 자체가 무의미한 경우만 retake로 보낸다.
+    blur, 저해상도, glare는 기록만 하고 OCR을 진행시킨다."""
 
     # 이미지 읽기 실패
     img = cv2.imread(image_path)
@@ -53,11 +54,11 @@ def _gate1_input_validity(image_path: str, quality: ImageQualityResult, doc_type
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     h, w = gray.shape
 
-    # 이미지 크기 최소 기준
+    # 이미지 크기 최소 기준 (OCR 자체가 불가능한 수준)
     if h < MIN_IMAGE_PIXELS or w < MIN_IMAGE_PIXELS:
         return _response(doc_type, Decision.RETAKE, "Image too small for document recognition", quality)
 
-    # 완전 검은/흰 화면
+    # 완전 검은/흰 화면 (문서가 없음)
     black_ratio = np.mean(gray < 10)
     white_ratio = np.mean(gray > 245)
     if black_ratio > BLACK_WHITE_THRESHOLD:
@@ -65,10 +66,7 @@ def _gate1_input_validity(image_path: str, quality: ImageQualityResult, doc_type
     if white_ratio > BLACK_WHITE_THRESHOLD:
         return _response(doc_type, Decision.RETAKE, "Image is nearly all white", quality)
 
-    # 품질 불량 (blur, glare, 저해상도)
-    if not quality.is_acceptable:
-        return _response(doc_type, Decision.RETAKE, _retake_reason(quality), quality)
-
+    # blur, 저해상도, glare → quality에 기록됨, OCR 진행
     return None
 
 
@@ -133,6 +131,15 @@ def _gate2_vlm_fallback(image_path: str, expected_type: DocumentType, quality: I
         return None  # match → 통과
 
     if vlm_type == "unknown":
+        # OCR도 판단 불가 + VLM도 판단 불가 → 품질 문제가 있으면 retake
+        raw_len = len(ocr.raw_text) if ocr.raw_text else 0
+        q_issues = _quality_issues(quality)
+        if q_issues or raw_len < MIN_RAW_TEXT_LENGTH:
+            reason = "VLM could not determine document type"
+            if q_issues:
+                reason = "; ".join(q_issues) + "; " + reason
+            return _response(DocumentType.UNKNOWN, Decision.RETAKE, reason, quality, ocr)
+        # 품질은 괜찮은데 VLM만 모르겠다면 → review
         return _response(
             DocumentType.UNKNOWN,
             Decision.REVIEW,
@@ -157,37 +164,51 @@ def _gate2_vlm_fallback(image_path: str, expected_type: DocumentType, quality: I
 # Gate 3: 필수 정보 존재 검증
 # ──────────────────────────────────────────────
 
+def _quality_issues(quality: ImageQualityResult) -> list[str]:
+    """품질 문제를 문자열 리스트로 반환한다."""
+    issues = []
+    if quality.blur_score is not None and quality.blur_score < BLUR_THRESHOLD:
+        issues.append(f"image too blurry (score: {quality.blur_score})")
+    if quality.low_resolution_detected:
+        issues.append("image resolution too low")
+    if quality.glare_detected:
+        issues.append("glare detected on document")
+    return issues
+
+
 def _gate3_required_fields_id(ocr: OCRResult, quality: ImageQualityResult) -> DocumentReviewResponse | None:
-    """신분증 필수 필드 존재 여부 + glare 조합 검증."""
+    """신분증 필수 필드 존재 여부 + 품질 조합 검증."""
     raw_len = len(ocr.raw_text) if ocr.raw_text else 0
     name = _get_field(ocr, "name")
     id_number = _get_field(ocr, "id_number")
-    glare = quality.glare_detected
+    q_issues = _quality_issues(quality)
 
     # OCR 결과가 극단적으로 적으면 retake
     if raw_len < MIN_RAW_TEXT_LENGTH:
-        return _response(DocumentType.ID_CARD, Decision.RETAKE,
-                         "OCR extracted too little text from image", quality, ocr)
-
-    # glare + 필수 필드 전부 없음 → retake (glare가 원인)
-    if not name and not id_number:
-        reason = "No required fields (name, id_number) could be extracted"
-        if glare:
-            reason = "Glare obscured document; " + reason
+        reason = "OCR extracted too little text from image"
+        if q_issues:
+            reason = "; ".join(q_issues) + "; " + reason
         return _response(DocumentType.ID_CARD, Decision.RETAKE, reason, quality, ocr)
 
-    # 일부 누락
+    # 품질 문제 + 필수 필드 전부 없음 → retake
+    if not name and not id_number:
+        reason = "No required fields (name, id_number) could be extracted"
+        if q_issues:
+            reason = "; ".join(q_issues) + "; " + reason
+        return _response(DocumentType.ID_CARD, Decision.RETAKE, reason, quality, ocr)
+
+    # 일부 누락 또는 품질 문제
     review_reasons: list[str] = []
     if not name:
         review_reasons.append("name field not found")
     if not id_number:
         review_reasons.append("id_number field not found")
 
-    # glare + 일부 필드 애매 → review에 glare 언급 추가
-    if glare and review_reasons:
-        review_reasons.insert(0, "glare detected on document")
+    # 품질 문제 + 일부 필드 누락 → review에 품질 언급 추가
+    if q_issues and review_reasons:
+        review_reasons = q_issues + review_reasons
 
-    # glare 있지만 필드 다 있으면 → 통과 (pass 가능)
+    # 품질 문제 있지만 필드 다 있으면 → 통과 (pass 가능)
 
     if review_reasons:
         return _response(DocumentType.ID_CARD, Decision.REVIEW,
@@ -197,22 +218,24 @@ def _gate3_required_fields_id(ocr: OCRResult, quality: ImageQualityResult) -> Do
 
 
 def _gate3_required_fields_bank(ocr: OCRResult, quality: ImageQualityResult) -> DocumentReviewResponse | None:
-    """통장사본 필수 필드 존재 여부 + glare 조합 검증."""
+    """통장사본 필수 필드 존재 여부 + 품질 조합 검증."""
     raw_len = len(ocr.raw_text) if ocr.raw_text else 0
     name = _get_field(ocr, "name")
     account_number = _get_field(ocr, "account_number")
     bank_name = _get_field(ocr, "bank_name")
-    glare = quality.glare_detected
+    q_issues = _quality_issues(quality)
 
     if raw_len < MIN_RAW_TEXT_LENGTH:
-        return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.RETAKE,
-                         "OCR extracted too little text from image", quality, ocr)
+        reason = "OCR extracted too little text from image"
+        if q_issues:
+            reason = "; ".join(q_issues) + "; " + reason
+        return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.RETAKE, reason, quality, ocr)
 
-    # glare + 핵심 필드 전부 없음 → retake
+    # 품질 문제 + 핵심 필드 전부 없음 → retake
     if not name and not account_number:
         reason = "No required fields (name, account_number) could be extracted"
-        if glare:
-            reason = "Glare obscured document; " + reason
+        if q_issues:
+            reason = "; ".join(q_issues) + "; " + reason
         return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.RETAKE, reason, quality, ocr)
 
     review_reasons: list[str] = []
@@ -223,8 +246,8 @@ def _gate3_required_fields_bank(ocr: OCRResult, quality: ImageQualityResult) -> 
     if not bank_name:
         review_reasons.append("bank_name field not found")
 
-    if glare and review_reasons:
-        review_reasons.insert(0, "glare detected on document")
+    if q_issues and review_reasons:
+        review_reasons = q_issues + review_reasons
 
     if review_reasons:
         return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.REVIEW,
