@@ -231,18 +231,27 @@ def _gate3_required_fields_bank(ocr: OCRResult, quality: ImageQualityResult) -> 
             reason = "; ".join(q_issues) + "; " + reason
         return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.RETAKE, reason, quality, ocr)
 
-    # 품질 문제 + 핵심 필드 전부 없음 → retake
-    if not name and not account_number:
-        reason = "No required fields (name, account_number) could be extracted"
+    # 계좌번호가 가장 핵심 — 없으면 나머지와 조합하여 판단
+    if not account_number:
+        if not name:
+            # 계좌번호 + 이름 둘 다 없음 → retake
+            reason = "No required fields (account_number, name) could be extracted"
+            if q_issues:
+                reason = "; ".join(q_issues) + "; " + reason
+            return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.RETAKE, reason, quality, ocr)
+        # 계좌번호 없음 + 이름만 있음 → review (핵심 정보 부재)
+        review_reasons = ["account_number field not found"]
+        if not bank_name:
+            review_reasons.append("bank_name field not found")
         if q_issues:
-            reason = "; ".join(q_issues) + "; " + reason
-        return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.RETAKE, reason, quality, ocr)
+            review_reasons = q_issues + review_reasons
+        return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.REVIEW,
+                         "; ".join(review_reasons), quality, ocr)
 
+    # 계좌번호 있음 — 나머지 필드 확인
     review_reasons: list[str] = []
     if not name:
         review_reasons.append("name field not found")
-    if not account_number:
-        review_reasons.append("account_number field not found")
     if not bank_name:
         review_reasons.append("bank_name field not found")
 
