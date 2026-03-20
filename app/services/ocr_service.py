@@ -42,7 +42,6 @@ def extract_id_card(image_path: str) -> OCRResult:
         raw_lines.append(text)
 
         if "주민등록증" in text:
-            fields.append(OCRField(field_name="doc_title", value=text, confidence=score))
             has_doc_title = True
             continue
 
@@ -74,11 +73,8 @@ def extract_bank_account(image_path: str) -> OCRResult:
             continue
         raw_lines.append(text)
 
-        # doc_title: 통장사본 키워드
-        if any(kw in text for kw in ["통장사본", "통장"]) and not any(
-            f.field_name == "doc_title" for f in fields
-        ):
-            fields.append(OCRField(field_name="doc_title", value=text, confidence=score))
+        # 통장사본 키워드는 스킵 (Gate 2 키워드 매칭에서 처리)
+        if any(kw in text for kw in ["통장사본", "통장"]):
             continue
 
         # bank_name: 은행명 인식 (짧은 텍스트만, 문장 제외)

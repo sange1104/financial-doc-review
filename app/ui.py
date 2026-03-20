@@ -4,7 +4,6 @@ import streamlit as st
 API_BASE = "http://localhost:8001/api/review"
 
 FIELD_LABELS = {
-    "doc_title": "📄 문서 제목",
     "name": "👤 이름",
     "id_number": "🔢 주민등록번호",
     "account_number": "💳 계좌번호",
