@@ -79,6 +79,10 @@ RETAKE_REASONS = {
         "label": "💡 빛반사로 인해 문서 내용을 읽을 수 없습니다",
         "guide": "조명을 조절하고 빛반사가 없는 상태에서 다시 촬영해주세요.",
     },
+    "VLM could not determine document type": {
+        "label": "❓ 문서 유형을 판별할 수 없습니다",
+        "guide": "문서 전체가 보이도록 다시 촬영해주세요.",
+    },
 }
 
 
@@ -95,6 +99,9 @@ REVIEW_REASONS = {
     "glare detected on document": "💡 문서에서 빛반사가 감지되었습니다",
     "image too blurry": "📷 이미지가 흐릿합니다",
     "image resolution too low": "📐 이미지 해상도가 낮습니다",
+    "VLM could not determine document type": "❓ 문서 유형을 판별할 수 없습니다",
+    "VLM detected bank account": "⚠️ VLM이 통장사본으로 판별했습니다",
+    "VLM detected ID card": "⚠️ VLM이 신분증으로 판별했습니다",
 }
 
 
