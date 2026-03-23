@@ -8,6 +8,8 @@ API_BASE = "http://localhost:8001/api/review"
 FIELD_LABELS = {
     "name": "👤 이름",
     "id_number": "🔢 주민등록번호",
+    "address": "🏠 주소",
+    "issue_date": "📅 발급일",
     "account_number": "💳 계좌번호",
     "bank_name": "🏦 은행명",
 }
@@ -104,6 +106,14 @@ REVIEW_REASONS = {
     "VLM could not determine document type": "❓ 문서 유형을 판별할 수 없습니다",
     "VLM detected bank account": "⚠️ VLM이 통장사본으로 판별했습니다",
     "VLM detected ID card": "⚠️ VLM이 신분증으로 판별했습니다",
+    "address confidence too low": "🏠 주소 인식 신뢰도가 낮습니다",
+    "issue_date confidence too low": "📅 발급일 인식 신뢰도가 낮습니다",
+    "id_number low confidence chars": "🔢 주민등록번호 일부 글자 인식 신뢰도가 낮습니다",
+    "account_number low confidence chars": "💳 계좌번호 일부 글자 인식 신뢰도가 낮습니다",
+    "name low confidence chars": "👤 이름 일부 글자 인식 신뢰도가 낮습니다",
+    "bank_name low confidence chars": "🏦 은행명 일부 글자 인식 신뢰도가 낮습니다",
+    "address low confidence chars": "🏠 주소 일부 글자 인식 신뢰도가 낮습니다",
+    "issue_date low confidence chars": "📅 발급일 일부 글자 인식 신뢰도가 낮습니다",
 }
 
 
@@ -118,12 +128,14 @@ def _get_retake_info(reason: str) -> tuple[str, str]:
 def _get_review_reasons_kr(reason: str) -> list[str]:
     """review 사유 영문 → 한글 리스트 반환."""
     parts = [r.strip() for r in reason.split(";")]
+    # 긴 키부터 매칭하여 부분 문자열 오매칭 방지 (e.g. "name" vs "bank_name")
+    sorted_keys = sorted(REVIEW_REASONS.keys(), key=len, reverse=True)
     result = []
     for part in parts:
         matched = False
-        for key, label in REVIEW_REASONS.items():
+        for key in sorted_keys:
             if key.lower() in part.lower():
-                result.append(label)
+                result.append(REVIEW_REASONS[key])
                 matched = True
                 break
         if not matched:
@@ -352,7 +364,7 @@ elif decision == "review":
         <ul style="margin: 8px 0 0 0; padding-left: 20px;">{reasons_html}</ul>
     </div>
     """, unsafe_allow_html=True)
-else:
+elif decision != "pass":
     st.markdown(f"""
     <div class="reason-box">
         <span style="font-weight: 600;">💬 판정 사유:</span> {data['reason']}
@@ -387,10 +399,31 @@ with col_ocr:
             else:
                 conf_class = "conf-low"
 
+            # 글자별 confidence 렌더링
+            char_confs = field.get("char_confidences", [])
+            if char_confs:
+                chars_html = ""
+                for cc in char_confs:
+                    c, c_conf = cc["char"], cc["confidence"]
+                    if c_conf >= 0.9:
+                        color = "#2e7d32"
+                    elif c_conf >= 0.7:
+                        color = "#e65100"
+                    elif c_conf >= 0.5:
+                        color = "#c62828"
+                    else:
+                        color = "#ffffff"
+                        chars_html += f'<span title="{c_conf:.0%}" style="background:#c62828;color:#fff;padding:0 2px;border-radius:3px;font-weight:700;">{c}</span>'
+                        continue
+                    chars_html += f'<span title="{c_conf:.0%}" style="color:{color};">{c}</span>'
+                value_html = f'<span class="field-value">{chars_html}</span>'
+            else:
+                value_html = f'<span class="field-value">{field["value"]}</span>'
+
             st.markdown(f"""
             <div class="field-card">
                 <div class="field-label">{label}</div>
-                <span class="field-value">{field['value']}</span>
+                {value_html}
                 <span class="conf-badge {conf_class}">{conf:.0%}</span>
             </div>
             """, unsafe_allow_html=True)

@@ -1,10 +1,42 @@
+import os
 import re
+import threading
+
+import numpy as np
+
+os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
 
 from paddleocr import PaddleOCR
+from paddlex.inference.models.text_recognition.processors import CTCLabelDecode
 
-from app.schemas.ocr import OCRField, OCRResult
+from app.schemas.ocr import CharConfidence, OCRField, OCRResult
 
-_ocr = PaddleOCR(use_textline_orientation=True, lang="korean")
+# --- Monkey-patch: 글자별 confidence 추출 ---
+_orig_ctc_call = CTCLabelDecode.__call__
+
+
+def _patched_ctc_call(self, pred, return_word_box=False, **kwargs):
+    preds = np.array(pred[0])
+    preds_idx = preds.argmax(axis=-1)
+    preds_prob = preds.max(axis=-1)
+    ignored_tokens = self.get_ignored_tokens()
+    if not hasattr(self, "_all_char_confs"):
+        self._all_char_confs = []
+    for batch_idx in range(len(preds_idx)):
+        selection = np.ones(len(preds_idx[batch_idx]), dtype=bool)
+        selection[1:] = preds_idx[batch_idx][1:] != preds_idx[batch_idx][:-1]
+        for tok in ignored_tokens:
+            selection &= preds_idx[batch_idx] != tok
+        chars = [self.character[i] for i in preds_idx[batch_idx][selection]]
+        confs = preds_prob[batch_idx][selection].tolist()
+        self._all_char_confs.append(list(zip(chars, confs)))
+    return _orig_ctc_call(self, pred, return_word_box=return_word_box, **kwargs)
+
+
+CTCLabelDecode.__call__ = _patched_ctc_call
+# --- End monkey-patch ---
+
+_ocr_lock = threading.Lock()
 
 ID_NUMBER_PATTERN = re.compile(r"\d{6}-\d{7}")
 ACCOUNT_NUMBER_PATTERN = re.compile(r"\d{2,4}[-]\d{2,4}[-]\d{2,4}([-]\d{2,4})?")
@@ -14,26 +46,53 @@ KOREAN_NAME_PATTERN = re.compile(r"^[가-힣]{2,4}$")
 DATE_PATTERN = re.compile(r"\d{4}[.\-/]")
 NON_NAME_KEYWORDS = ["은행", "Bank", "통장", "예금", "계좌", "지점", "안내", "발행", "관리", "인터넷", "전자"]
 
+# 신분증 주소 추출용
+ADDRESS_KEYWORDS = ["시", "구", "동", "로", "길", "읍", "면", "리", "번지", "아파트", "호"]
+ISSUER_KEYWORDS = ["청장", "장관", "시장", "군수", "발급"]
+# 신분증 발급일 추출용 (YYYY.MM.DD / YYYY. MM. DD / YYYY-MM-DD 등)
+ISSUE_DATE_PATTERN = re.compile(r"(\d{4})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})")
 
-def _run_ocr(image_path: str) -> tuple[list[str], list[float]]:
-    """PaddleOCR 실행 후 (texts, scores) 반환."""
-    results = list(_ocr.predict(image_path))
+
+def _run_ocr(image_path: str) -> tuple[list[str], list[float], dict[str, list[tuple[str, float]]]]:
+    """PaddleOCR 실행 후 (texts, scores, char_confs_map) 반환.
+    char_confs_map: text -> [(char, confidence), ...] 매핑."""
+    with _ocr_lock:
+        ocr = PaddleOCR(use_textline_orientation=True, lang="korean")
+        post = ocr.paddlex_pipeline.text_rec_model.post_op
+        post._all_char_confs = []
+        results = list(ocr.predict(image_path))
+
+    # 글자별 confidence를 text 기준으로 매핑
+    char_confs_map: dict[str, list[tuple[str, float]]] = {}
+    for cc in post._all_char_confs:
+        text = "".join(c for c, _ in cc)
+        char_confs_map[text] = cc
+
     texts: list[str] = []
     scores: list[float] = []
     for res in results:
         if "rec_texts" in res:
             texts.extend(res["rec_texts"])
             scores.extend(res["rec_scores"])
-    return texts, scores
+    return texts, scores, char_confs_map
+
+
+def _get_char_confs(text: str, char_confs_map: dict) -> list[CharConfidence]:
+    """텍스트에 해당하는 글자별 confidence를 CharConfidence 리스트로 반환."""
+    cc = char_confs_map.get(text, [])
+    return [CharConfidence(char=ch, confidence=conf) for ch, conf in cc]
 
 
 def extract_id_card(image_path: str) -> OCRResult:
-    texts, scores = _run_ocr(image_path)
+    texts, scores, char_confs_map = _run_ocr(image_path)
 
     fields: list[OCRField] = []
     raw_lines: list[str] = []
     has_doc_title = False
     has_name = False
+    has_id_number = False
+    address_parts: list[tuple[str, float]] = []
+    issue_date_field: OCRField | None = None
 
     for text, score in zip(texts, scores):
         text = text.strip()
@@ -46,20 +105,53 @@ def extract_id_card(image_path: str) -> OCRResult:
             continue
 
         id_match = ID_NUMBER_PATTERN.search(text)
-        if id_match:
-            fields.append(OCRField(field_name="id_number", value=id_match.group(), confidence=score))
+        if id_match and not has_id_number:
+            fields.append(OCRField(field_name="id_number", value=id_match.group(), confidence=score,
+                                   char_confidences=_get_char_confs(text, char_confs_map)))
+            has_id_number = True
             continue
 
         if has_doc_title and not has_name and score >= 0.8:
-            fields.append(OCRField(field_name="name", value=text, confidence=score))
+            fields.append(OCRField(field_name="name", value=text, confidence=score,
+                                   char_confidences=_get_char_confs(text, char_confs_map)))
             has_name = True
             continue
+
+        # 주소: 주소 키워드가 포함된 줄 수집 (발급 주체 제외)
+        if any(kw in text for kw in ISSUER_KEYWORDS):
+            pass  # "~청장", "발급" 등은 주소가 아님
+        else:
+            addr_keyword_count = sum(1 for kw in ADDRESS_KEYWORDS if kw in text)
+            if addr_keyword_count >= 2 or (addr_keyword_count >= 1 and len(text) >= 8):
+                address_parts.append((text, score))
+                continue
+
+        # 발급일: 날짜 패턴 + "발급" 키워드 근처
+        if not issue_date_field:
+            date_match = ISSUE_DATE_PATTERN.search(text)
+            if date_match:
+                date_str = f"{date_match.group(1)}.{date_match.group(2).zfill(2)}.{date_match.group(3).zfill(2)}"
+                issue_date_field = OCRField(field_name="issue_date", value=date_str, confidence=score,
+                                              char_confidences=_get_char_confs(text, char_confs_map))
+
+    # 주소 조합
+    if address_parts:
+        combined_addr = " ".join(part for part, _ in address_parts)
+        avg_conf = sum(conf for _, conf in address_parts) / len(address_parts)
+        combined_char_confs: list[CharConfidence] = []
+        for part, _ in address_parts:
+            combined_char_confs.extend(_get_char_confs(part, char_confs_map))
+        fields.append(OCRField(field_name="address", value=combined_addr, confidence=avg_conf,
+                               char_confidences=combined_char_confs))
+
+    if issue_date_field:
+        fields.append(issue_date_field)
 
     return OCRResult(fields=fields, raw_text="\n".join(raw_lines) if raw_lines else None)
 
 
 def extract_bank_account(image_path: str) -> OCRResult:
-    texts, scores = _run_ocr(image_path)
+    texts, scores, char_confs_map = _run_ocr(image_path)
 
     fields: list[OCRField] = []
     raw_lines: list[str] = []
@@ -80,7 +172,8 @@ def extract_bank_account(image_path: str) -> OCRResult:
         # bank_name: 은행명 인식 (짧은 텍스트만, 문장 제외)
         if not has_bank and score >= 0.7 and len(text) <= 15:
             if any(bank in text for bank in BANK_NAMES) and ("은행" in text or "Bank" in text.title()):
-                fields.append(OCRField(field_name="bank_name", value=text, confidence=score))
+                fields.append(OCRField(field_name="bank_name", value=text, confidence=score,
+                                       char_confidences=_get_char_confs(text, char_confs_map)))
                 has_bank = True
                 continue
 
@@ -89,7 +182,8 @@ def extract_bank_account(image_path: str) -> OCRResult:
             if "계좌번호" in text or "계좌 번 호" in text:
                 acct_match = ACCOUNT_NUMBER_PATTERN.search(text)
                 if acct_match:
-                    fields.append(OCRField(field_name="account_number", value=acct_match.group(), confidence=score))
+                    fields.append(OCRField(field_name="account_number", value=acct_match.group(), confidence=score,
+                                           char_confidences=_get_char_confs(text, char_confs_map)))
                     has_account = True
                     continue
                 if i + 1 < len(texts):
@@ -97,12 +191,13 @@ def extract_bank_account(image_path: str) -> OCRResult:
                     next_score = scores[i + 1]
                     next_match = ACCOUNT_NUMBER_PATTERN.search(next_text)
                     if next_match:
-                        fields.append(OCRField(field_name="account_number", value=next_match.group(), confidence=next_score))
+                        fields.append(OCRField(field_name="account_number", value=next_match.group(), confidence=next_score,
+                                               char_confidences=_get_char_confs(next_text, char_confs_map)))
                         has_account = True
                 continue
 
     # name: 후보 추출 + 점수화
-    name_field = _score_name_candidates(texts, scores, raw_lines)
+    name_field = _score_name_candidates(texts, scores, raw_lines, char_confs_map)
     if name_field:
         fields.append(name_field)
 
@@ -110,7 +205,8 @@ def extract_bank_account(image_path: str) -> OCRResult:
 
 
 def _score_name_candidates(
-    texts: list[str], scores: list[float], raw_lines: list[str]
+    texts: list[str], scores: list[float], raw_lines: list[str],
+    char_confs_map: dict | None = None,
 ) -> OCRField | None:
     """후보 추출 + 점수화로 이름 필드를 결정한다."""
     candidates: list[tuple[str, float, float]] = []  # (name, ocr_confidence, score)
@@ -174,4 +270,5 @@ def _score_name_candidates(
 
     # 최고 점수 후보 선택
     best = max(candidates, key=lambda x: x[2])
-    return OCRField(field_name="name", value=best[0], confidence=best[1])
+    cc = _get_char_confs(best[0], char_confs_map or {})
+    return OCRField(field_name="name", value=best[0], confidence=best[1], char_confidences=cc)

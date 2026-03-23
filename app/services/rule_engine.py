@@ -5,7 +5,7 @@ import numpy as np
 
 from app.schemas.decision import Decision, DocumentReviewResponse
 from app.schemas.document import DocumentType
-from app.schemas.ocr import OCRResult
+from app.schemas.ocr import OCRField, OCRResult
 from app.schemas.quality import ImageQualityResult
 from app.services.ocr_service import extract_bank_account, extract_id_card
 from app.services.quality_service import BLUR_THRESHOLD, evaluate_quality
@@ -14,6 +14,7 @@ ID_NUMBER_PATTERN = re.compile(r"^\d{6}-\d{7}$")
 CRITICAL_CONFIDENCE = 0.7   # 핵심 필드 (id_number, account_number)
 NAME_CONFIDENCE = 0.6       # 이름 (heuristic 추출이라 기준 낮춤)
 SECONDARY_CONFIDENCE = 0.5  # 보조 필드 (bank_name)
+CHAR_CONFIDENCE = 0.5       # 글자별 최소 confidence (이하이면 해당 글자 review)
 MIN_RAW_TEXT_LENGTH = 10
 MIN_IMAGE_PIXELS = 100
 BLACK_WHITE_THRESHOLD = 0.95
@@ -260,24 +261,53 @@ def _gate3_required_fields_bank(ocr: OCRResult, quality: ImageQualityResult) -> 
 # Gate 4: 형식 검증 + 최종 확신
 # ──────────────────────────────────────────────
 
+def _check_char_confidence(field: OCRField, threshold: float = CHAR_CONFIDENCE) -> list[str]:
+    """글자별 confidence를 검사하여 낮은 글자 목록 반환.
+    예: ["'3' at position 5 (0.42)"]"""
+    low_chars = []
+    for i, cc in enumerate(field.char_confidences):
+        if cc.confidence < threshold:
+            low_chars.append(f"'{cc.char}' at position {i + 1} ({cc.confidence:.2f})")
+    return low_chars
+
+
+def _field_confidence_check(
+    field: OCRField | None,
+    field_name: str,
+    line_threshold: float,
+    review_reasons: list[str],
+) -> None:
+    """필드의 라인 confidence + 글자별 confidence를 검사하여 review_reasons에 추가."""
+    if field is None:
+        return
+    if field.confidence < line_threshold:
+        review_reasons.append(f"{field_name} confidence too low ({field.confidence:.2f})")
+        return
+    # 라인 평균은 통과했지만 특정 글자가 낮은 경우
+    low_chars = _check_char_confidence(field)
+    if low_chars:
+        chars_desc = ", ".join(low_chars)
+        review_reasons.append(f"{field_name} low confidence chars: {chars_desc}")
+
+
 def _gate4_validation_id(ocr: OCRResult, quality: ImageQualityResult) -> DocumentReviewResponse | None:
-    """신분증 필드별 형식 검증 및 confidence 확인.
-    - id_number: 핵심 필드 (CRITICAL_CONFIDENCE + 형식 검증)
-    - name: 이름 필드 (NAME_CONFIDENCE)"""
+    """신분증 필드별 형식 검증 및 confidence 확인 (글자별 포함)."""
     name = _get_field(ocr, "name")
     id_number = _get_field(ocr, "id_number")
+    address = _get_field(ocr, "address")
+    issue_date = _get_field(ocr, "issue_date")
     review_reasons: list[str] = []
 
     # 핵심: id_number 형식 + confidence
     if id_number:
         if not ID_NUMBER_PATTERN.match(id_number.value or ""):
             review_reasons.append(f"id_number format invalid: {id_number.value}")
-        elif id_number.confidence < CRITICAL_CONFIDENCE:
-            review_reasons.append(f"id_number confidence too low ({id_number.confidence:.2f})")
+        else:
+            _field_confidence_check(id_number, "id_number", CRITICAL_CONFIDENCE, review_reasons)
 
-    # 이름: heuristic 추출이므로 기준 낮춤
-    if name and name.confidence < NAME_CONFIDENCE:
-        review_reasons.append(f"name confidence too low ({name.confidence:.2f})")
+    _field_confidence_check(name, "name", NAME_CONFIDENCE, review_reasons)
+    _field_confidence_check(address, "address", SECONDARY_CONFIDENCE, review_reasons)
+    _field_confidence_check(issue_date, "issue_date", SECONDARY_CONFIDENCE, review_reasons)
 
     if review_reasons:
         return _response(DocumentType.ID_CARD, Decision.REVIEW,
@@ -287,26 +317,15 @@ def _gate4_validation_id(ocr: OCRResult, quality: ImageQualityResult) -> Documen
 
 
 def _gate4_validation_bank(ocr: OCRResult, quality: ImageQualityResult) -> DocumentReviewResponse | None:
-    """통장사본 필드별 형식 검증 및 confidence 확인.
-    - account_number: 핵심 필드 (CRITICAL_CONFIDENCE)
-    - name: 이름 필드 (NAME_CONFIDENCE)
-    - bank_name: 보조 필드 (SECONDARY_CONFIDENCE)"""
+    """통장사본 필드별 형식 검증 및 confidence 확인 (글자별 포함)."""
     name = _get_field(ocr, "name")
     account_number = _get_field(ocr, "account_number")
     bank_name = _get_field(ocr, "bank_name")
     review_reasons: list[str] = []
 
-    # 핵심: account_number confidence
-    if account_number and account_number.confidence < CRITICAL_CONFIDENCE:
-        review_reasons.append(f"account_number confidence too low ({account_number.confidence:.2f})")
-
-    # 이름
-    if name and name.confidence < NAME_CONFIDENCE:
-        review_reasons.append(f"name confidence too low ({name.confidence:.2f})")
-
-    # 보조: bank_name
-    if bank_name and bank_name.confidence < SECONDARY_CONFIDENCE:
-        review_reasons.append(f"bank_name confidence too low ({bank_name.confidence:.2f})")
+    _field_confidence_check(account_number, "account_number", CRITICAL_CONFIDENCE, review_reasons)
+    _field_confidence_check(name, "name", NAME_CONFIDENCE, review_reasons)
+    _field_confidence_check(bank_name, "bank_name", SECONDARY_CONFIDENCE, review_reasons)
 
     if review_reasons:
         return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.REVIEW,
@@ -352,7 +371,7 @@ def evaluate_id_card(image_path: str, on_progress=None) -> DocumentReviewRespons
 
     # Pass
     return _response(DocumentType.ID_CARD, Decision.PASS,
-                     "All required fields present and valid", quality, ocr)
+                     "모든 필수 정보가 정상적으로 확인되었습니다", quality, ocr)
 
 
 def evaluate_bank_account(image_path: str, on_progress=None) -> DocumentReviewResponse:
@@ -388,7 +407,7 @@ def evaluate_bank_account(image_path: str, on_progress=None) -> DocumentReviewRe
 
     # Pass
     return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.PASS,
-                     "All required fields present and valid", quality, ocr)
+                     "모든 필수 정보가 정상적으로 확인되었습니다", quality, ocr)
 
 
 def _retake_reason(quality: ImageQualityResult) -> str:
