@@ -125,7 +125,7 @@ def _gate2_vlm_fallback(image_path: str, expected_type: DocumentType, quality: I
     """VLM으로 문서 유형을 분류한다."""
     from app.services.vlm_service import classify_document_type
 
-    vlm_type = classify_document_type(image_path)
+    vlm_type, vlm_desc = classify_document_type(image_path)
 
     expected_vlm = "id_card" if expected_type == DocumentType.ID_CARD else "bank_account"
 
@@ -133,31 +133,17 @@ def _gate2_vlm_fallback(image_path: str, expected_type: DocumentType, quality: I
         return None  # match → 통과
 
     if vlm_type == "unknown":
-        # OCR도 판단 불가 + VLM도 판단 불가 → 품질 문제가 있으면 retake
-        raw_len = len(ocr.raw_text) if ocr.raw_text else 0
-        q_issues = _quality_issues(quality)
-        if q_issues or raw_len < MIN_RAW_TEXT_LENGTH:
-            reason = "VLM could not determine document type"
-            if q_issues:
-                reason = "; ".join(q_issues) + "; " + reason
-            return _response(DocumentType.UNKNOWN, Decision.RETAKE, reason, quality, ocr)
-        # 품질은 괜찮은데 VLM만 모르겠다면 → review
-        return _response(
-            DocumentType.UNKNOWN,
-            Decision.REVIEW,
-            "VLM could not determine document type",
-            quality, ocr,
-        )
+        reason = vlm_desc or "VLM could not determine document type"
+        return _response(DocumentType.UNKNOWN, Decision.INVALID_DOC_TYPE, reason, quality, ocr)
 
     # VLM이 다른 타입으로 판정
     detected = DocumentType.ID_CARD if vlm_type == "id_card" else DocumentType.BANK_ACCOUNT_DOC
-    expected_label = "ID card" if expected_type == DocumentType.ID_CARD else "bank account"
-    detected_label = "ID card" if vlm_type == "id_card" else "bank account"
+    reason = vlm_desc or f"Expected {'ID card' if expected_type == DocumentType.ID_CARD else 'bank account'} but VLM detected {'ID card' if vlm_type == 'id_card' else 'bank account'}"
 
     return _response(
         detected,
         Decision.INVALID_DOC_TYPE,
-        f"Expected {expected_label} but VLM detected {detected_label}",
+        reason,
         quality, ocr,
     )
 

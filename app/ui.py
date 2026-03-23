@@ -307,10 +307,13 @@ if decision == "retake":
     """, unsafe_allow_html=True)
 elif decision == "invalid_doc_type":
     detected = data.get("document_type", "")
+    reason = data.get("reason", "")
     if detected == "id_card":
         inv_label = "⚠️ 신분증이 감지되었습니다. 통장사본을 업로드해주세요."
     elif detected == "bank_account_doc":
         inv_label = "⚠️ 통장사본이 감지되었습니다. 신분증을 업로드해주세요."
+    elif reason:
+        inv_label = f"⚠️ {reason}"
     else:
         inv_label = "⚠️ 선택한 문서 유형과 다른 문서가 감지되었습니다."
     st.markdown(f"""
