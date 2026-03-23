@@ -1,3 +1,5 @@
+import json
+
 import requests
 import streamlit as st
 
@@ -272,19 +274,38 @@ if not uploaded:
 
 st.divider()
 
-endpoint = f"{API_BASE}/id-card" if doc_type == "신분증" else f"{API_BASE}/bank-account"
+endpoint = f"{API_BASE}/id-card/stream" if doc_type == "신분증" else f"{API_BASE}/bank-account/stream"
 
-with st.spinner("🔄 문서를 분석하고 있습니다..."):
+data = None
+with st.status("🔄 문서를 분석하고 있습니다...", expanded=True) as status:
+    step_text = st.empty()
     resp = requests.post(
         endpoint,
         files={"file": (uploaded.name, uploaded.getvalue(), uploaded.type)},
+        stream=True,
     )
+    if resp.status_code != 200:
+        st.error(f"API 오류: {resp.status_code} - {resp.text}")
+        st.stop()
 
-if resp.status_code != 200:
-    st.error(f"API 오류: {resp.status_code} - {resp.text}")
+    for line in resp.iter_lines(decode_unicode=True):
+        if not line or not line.startswith("data: "):
+            continue
+        event = json.loads(line[6:])
+        if event["type"] == "progress":
+            step_text.markdown(event["message"])
+        elif event["type"] == "result":
+            data = event["data"]
+        elif event["type"] == "error":
+            st.error(f"처리 오류: {event['message']}")
+            st.stop()
+
+    step_text.empty()
+    status.update(label="✅ 분석 완료!", state="complete")
+
+if data is None:
+    st.error("응답을 받지 못했습니다.")
     st.stop()
-
-data = resp.json()
 decision = data["decision"]
 cfg = DECISION_CONFIG[decision]
 

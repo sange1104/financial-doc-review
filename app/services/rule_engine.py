@@ -76,7 +76,7 @@ def _gate1_input_validity(image_path: str, quality: ImageQualityResult, doc_type
 # Gate 2: 문서 유형 검증
 # ──────────────────────────────────────────────
 
-def _gate2_document_type(ocr: OCRResult, expected_type: DocumentType, quality: ImageQualityResult, image_path: str) -> DocumentReviewResponse | None:
+def _gate2_document_type(ocr: OCRResult, expected_type: DocumentType, quality: ImageQualityResult, image_path: str, on_progress=None) -> DocumentReviewResponse | None:
     """OCR 결과에서 문서 유형이 기대와 맞는지 검증한다.
     애매한 경우 VLM을 호출한다."""
     raw = ocr.raw_text or ""
@@ -116,14 +116,17 @@ def _gate2_document_type(ocr: OCRResult, expected_type: DocumentType, quality: I
     )
 
     if is_ambiguous:
-        return _gate2_vlm_fallback(image_path, expected_type, quality, ocr)
+        return _gate2_vlm_fallback(image_path, expected_type, quality, ocr, on_progress=on_progress)
 
     return None
 
 
-def _gate2_vlm_fallback(image_path: str, expected_type: DocumentType, quality: ImageQualityResult, ocr: OCRResult) -> DocumentReviewResponse | None:
+def _gate2_vlm_fallback(image_path: str, expected_type: DocumentType, quality: ImageQualityResult, ocr: OCRResult, on_progress=None) -> DocumentReviewResponse | None:
     """VLM으로 문서 유형을 분류한다."""
     from app.services.vlm_service import classify_document_type
+
+    _notify = on_progress or (lambda msg: None)
+    _notify("🤖 VLM으로 문서를 분석하고 있습니다...")
 
     vlm_type, vlm_desc = classify_document_type(image_path)
 
@@ -316,7 +319,10 @@ def _gate4_validation_bank(ocr: OCRResult, quality: ImageQualityResult) -> Docum
 # 메인 평가 함수
 # ──────────────────────────────────────────────
 
-def evaluate_id_card(image_path: str) -> DocumentReviewResponse:
+def evaluate_id_card(image_path: str, on_progress=None) -> DocumentReviewResponse:
+    _notify = on_progress or (lambda msg: None)
+
+    _notify("🔍 이미지 품질을 검사하고 있습니다...")
     quality = evaluate_quality(image_path)
 
     # Gate 1: 입력 유효성
@@ -324,15 +330,17 @@ def evaluate_id_card(image_path: str) -> DocumentReviewResponse:
     if result:
         return result
 
-    # OCR 추출
+    _notify("📝 문서에서 텍스트를 추출하고 있습니다...")
     ocr = extract_id_card(image_path)
 
     # Gate 2: 문서 유형
-    result = _gate2_document_type(ocr, DocumentType.ID_CARD, quality, image_path)
+    _notify("🔎 문서 유형을 확인하고 있습니다...")
+    result = _gate2_document_type(ocr, DocumentType.ID_CARD, quality, image_path, on_progress=on_progress)
     if result:
         return result
 
     # Gate 3: 필수 정보
+    _notify("✅ 추출된 정보를 검증하고 있습니다...")
     result = _gate3_required_fields_id(ocr, quality)
     if result:
         return result
@@ -347,7 +355,10 @@ def evaluate_id_card(image_path: str) -> DocumentReviewResponse:
                      "All required fields present and valid", quality, ocr)
 
 
-def evaluate_bank_account(image_path: str) -> DocumentReviewResponse:
+def evaluate_bank_account(image_path: str, on_progress=None) -> DocumentReviewResponse:
+    _notify = on_progress or (lambda msg: None)
+
+    _notify("🔍 이미지 품질을 검사하고 있습니다...")
     quality = evaluate_quality(image_path)
 
     # Gate 1: 입력 유효성
@@ -355,15 +366,17 @@ def evaluate_bank_account(image_path: str) -> DocumentReviewResponse:
     if result:
         return result
 
-    # OCR 추출
+    _notify("📝 문서에서 텍스트를 추출하고 있습니다...")
     ocr = extract_bank_account(image_path)
 
     # Gate 2: 문서 유형
-    result = _gate2_document_type(ocr, DocumentType.BANK_ACCOUNT_DOC, quality, image_path)
+    _notify("🔎 문서 유형을 확인하고 있습니다...")
+    result = _gate2_document_type(ocr, DocumentType.BANK_ACCOUNT_DOC, quality, image_path, on_progress=on_progress)
     if result:
         return result
 
     # Gate 3: 필수 정보
+    _notify("✅ 추출된 정보를 검증하고 있습니다...")
     result = _gate3_required_fields_bank(ocr, quality)
     if result:
         return result
