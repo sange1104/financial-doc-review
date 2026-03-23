@@ -288,36 +288,48 @@ st.divider()
 
 endpoint = f"{API_BASE}/id-card/stream" if doc_type == "신분증" else f"{API_BASE}/bank-account/stream"
 
-data = None
-with st.status("🔄 문서를 분석하고 있습니다...", expanded=True) as status:
-    step_text = st.empty()
-    resp = requests.post(
-        endpoint,
-        files={"file": (uploaded.name, uploaded.getvalue(), uploaded.type)},
-        stream=True,
-    )
-    if resp.status_code != 200:
-        st.error(f"API 오류: {resp.status_code} - {resp.text}")
-        st.stop()
+# 분석 결과 캐시: 같은 파일+문서유형이면 재분석하지 않음
+cache_key = f"{uploaded.name}_{uploaded.size}_{doc_type}"
+if st.session_state.get("_cache_key") != cache_key:
+    st.session_state._cache_key = cache_key
+    st.session_state._cached_data = None
+    st.session_state.review_confirmed = False
+    st.session_state.edited_fields = {}
 
-    for line in resp.iter_lines(decode_unicode=True):
-        if not line or not line.startswith("data: "):
-            continue
-        event = json.loads(line[6:])
-        if event["type"] == "progress":
-            step_text.markdown(event["message"])
-        elif event["type"] == "result":
-            data = event["data"]
-        elif event["type"] == "error":
-            st.error(f"처리 오류: {event['message']}")
+if st.session_state._cached_data is None:
+    data = None
+    with st.status("🔄 문서를 분석하고 있습니다...", expanded=True) as status:
+        step_text = st.empty()
+        resp = requests.post(
+            endpoint,
+            files={"file": (uploaded.name, uploaded.getvalue(), uploaded.type)},
+            stream=True,
+        )
+        if resp.status_code != 200:
+            st.error(f"API 오류: {resp.status_code} - {resp.text}")
             st.stop()
 
-    step_text.empty()
-    status.update(label="✅ 분석 완료!", state="complete")
+        for line in resp.iter_lines(decode_unicode=True):
+            if not line or not line.startswith("data: "):
+                continue
+            event = json.loads(line[6:])
+            if event["type"] == "progress":
+                step_text.markdown(event["message"])
+            elif event["type"] == "result":
+                data = event["data"]
+            elif event["type"] == "error":
+                st.error(f"처리 오류: {event['message']}")
+                st.stop()
 
-if data is None:
-    st.error("응답을 받지 못했습니다.")
-    st.stop()
+        step_text.empty()
+        status.update(label="✅ 분석 완료!", state="complete")
+
+    if data is None:
+        st.error("응답을 받지 못했습니다.")
+        st.stop()
+    st.session_state._cached_data = data
+else:
+    data = st.session_state._cached_data
 decision = data["decision"]
 cfg = DECISION_CONFIG[decision]
 
@@ -378,8 +390,54 @@ with col_img:
     st.markdown(f'<div class="section-header">🖼️ 업로드된 {doc_type}</div>', unsafe_allow_html=True)
     st.image(uploaded, use_container_width=True)
 
+def _render_char_confs_hint(char_confs: list[dict]) -> str:
+    """글자별 confidence를 색상 코딩된 HTML로 렌더링."""
+    if not char_confs:
+        return ""
+    chars_html = ""
+    for cc in char_confs:
+        c, c_conf = cc["char"], cc["confidence"]
+        if c_conf >= 0.9:
+            color = "#2e7d32"
+        elif c_conf >= 0.7:
+            color = "#e65100"
+        elif c_conf >= 0.5:
+            color = "#c62828"
+        else:
+            color = "#ffffff"
+            chars_html += f'<span title="{c_conf:.0%}" style="background:#c62828;color:#fff;padding:0 2px;border-radius:3px;font-weight:700;">{c}</span>'
+            continue
+        chars_html += f'<span title="{c_conf:.0%}" style="color:{color};">{c}</span>'
+    return chars_html
+
+
+def _get_low_conf_hint(char_confs: list[dict], threshold: float = 0.7) -> str:
+    """confidence가 낮은 글자들의 위치를 안내 텍스트로 반환."""
+    low = [(i + 1, cc["char"], cc["confidence"]) for i, cc in enumerate(char_confs) if cc["confidence"] < threshold]
+    if not low:
+        return ""
+    parts = [f"**{pos}번째 '{ch}'** ({conf:.0%})" for pos, ch, conf in low]
+    return f"확인 필요: {', '.join(parts)}"
+
+
+is_review = decision == "review"
+
+# 확인 완료 상태 관리
+if "review_confirmed" not in st.session_state:
+    st.session_state.review_confirmed = False
+if "edited_fields" not in st.session_state:
+    st.session_state.edited_fields = {}
+
+editing = is_review and not st.session_state.review_confirmed
+
 with col_ocr:
-    st.markdown('<div class="section-header">📝 추출된 정보</div>', unsafe_allow_html=True)
+    if editing:
+        header_text = "✏️ 정보 확인 및 수정"
+    elif is_review and st.session_state.review_confirmed:
+        header_text = "✅ 확인 완료된 정보"
+    else:
+        header_text = "📝 추출된 정보"
+    st.markdown(f'<div class="section-header">{header_text}</div>', unsafe_allow_html=True)
 
     if not data["ocr"]["fields"]:
         st.markdown("""
@@ -389,9 +447,16 @@ with col_ocr:
         </div>
         """, unsafe_allow_html=True)
     else:
-        for field in data["ocr"]["fields"]:
-            label = FIELD_LABELS.get(field["field_name"], field["field_name"])
+        fields = data["ocr"]["fields"]
+        if is_review:
+            fields = sorted(fields, key=lambda f: f["confidence"])
+
+        for field in fields:
+            fname = field["field_name"]
+            label = FIELD_LABELS.get(fname, fname)
             conf = field["confidence"]
+            char_confs = field.get("char_confidences", [])
+
             if conf >= 0.9:
                 conf_class = "conf-high"
             elif conf >= 0.7:
@@ -399,34 +464,64 @@ with col_ocr:
             else:
                 conf_class = "conf-low"
 
-            # 글자별 confidence 렌더링
-            char_confs = field.get("char_confidences", [])
-            if char_confs:
-                chars_html = ""
-                for cc in char_confs:
-                    c, c_conf = cc["char"], cc["confidence"]
-                    if c_conf >= 0.9:
-                        color = "#2e7d32"
-                    elif c_conf >= 0.7:
-                        color = "#e65100"
-                    elif c_conf >= 0.5:
-                        color = "#c62828"
-                    else:
-                        color = "#ffffff"
-                        chars_html += f'<span title="{c_conf:.0%}" style="background:#c62828;color:#fff;padding:0 2px;border-radius:3px;font-weight:700;">{c}</span>'
-                        continue
-                    chars_html += f'<span title="{c_conf:.0%}" style="color:{color};">{c}</span>'
-                value_html = f'<span class="field-value">{chars_html}</span>'
-            else:
-                value_html = f'<span class="field-value">{field["value"]}</span>'
+            if editing:
+                # 편집 모드: 색상 힌트 + 입력 필드
+                chars_hint = _render_char_confs_hint(char_confs)
+                if chars_hint:
+                    st.markdown(f"""
+                    <div style="margin-bottom: -10px;">
+                        <span style="font-size: 0.8em; color: #888;">{label}</span>
+                        <span class="conf-badge {conf_class}" style="font-size: 0.75em;">{conf:.0%}</span>
+                    </div>
+                    <div style="font-size: 1.1em; margin-bottom: 2px; font-family: monospace;">{chars_hint}</div>
+                    """, unsafe_allow_html=True)
 
-            st.markdown(f"""
-            <div class="field-card">
-                <div class="field-label">{label}</div>
-                {value_html}
-                <span class="conf-badge {conf_class}">{conf:.0%}</span>
-            </div>
-            """, unsafe_allow_html=True)
+                low_hint = _get_low_conf_hint(char_confs)
+                edited = st.text_input(
+                    label if not chars_hint else "수정값",
+                    value=field["value"] or "",
+                    key=f"edit_{fname}",
+                    label_visibility="collapsed" if chars_hint else "visible",
+                )
+                if low_hint:
+                    st.caption(low_hint)
+                st.session_state.edited_fields[fname] = edited
+
+            elif is_review and st.session_state.review_confirmed:
+                # 확인 완료 모드: 수정된 값을 읽기 전용으로 표시
+                confirmed_value = st.session_state.edited_fields.get(fname, field["value"])
+                changed = confirmed_value != field["value"]
+                badge = ' <span style="background:#1565c0;color:#fff;padding:1px 8px;border-radius:10px;font-size:0.75em;">수정됨</span>' if changed else ""
+                st.markdown(f"""
+                <div class="field-card">
+                    <div class="field-label">{label}{badge}</div>
+                    <span class="field-value">{confirmed_value}</span>
+                    <span class="conf-badge {conf_class}">{conf:.0%}</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+            else:
+                # 읽기 전용 모드 (pass, retake 등)
+                chars_html = _render_char_confs_hint(char_confs)
+                value_html = f'<span class="field-value">{chars_html}</span>' if chars_html else f'<span class="field-value">{field["value"]}</span>'
+                st.markdown(f"""
+                <div class="field-card">
+                    <div class="field-label">{label}</div>
+                    {value_html}
+                    <span class="conf-badge {conf_class}">{conf:.0%}</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+        if is_review:
+            st.divider()
+            if editing:
+                if st.button("✅ 확인 완료", type="primary", use_container_width=True):
+                    st.session_state.review_confirmed = True
+                    st.rerun()
+            else:
+                if st.button("✏️ 다시 수정하기", use_container_width=True):
+                    st.session_state.review_confirmed = False
+                    st.rerun()
 
 # 이미지 품질 (expander로 숨김)
 with st.expander("📊 이미지 품질 분석 보기"):
