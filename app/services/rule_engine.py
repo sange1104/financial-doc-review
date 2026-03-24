@@ -52,7 +52,7 @@ def _response(doc_type, decision, reason, quality, ocr=None):
 
 def _gate1_input_validity(image_path: str, quality: ImageQualityResult, doc_type: DocumentType) -> DocumentReviewResponse | None:
     """OCR 자체가 무의미한 경우만 retake로 보낸다.
-    blur, 저해상도, glare는 기록만 하고 OCR을 진행시킨다."""
+    blur, 저해상도는 기록만 하고 OCR을 진행시킨다."""
 
     # 이미지 읽기 실패
     img = cv2.imread(image_path)
@@ -74,7 +74,7 @@ def _gate1_input_validity(image_path: str, quality: ImageQualityResult, doc_type
     if white_ratio > BLACK_WHITE_THRESHOLD:
         return _response(doc_type, Decision.RETAKE, "Image is nearly all white", quality)
 
-    # blur, 저해상도, glare → quality에 기록됨, OCR 진행
+    # blur, 저해상도 → quality에 기록됨, OCR 진행
     return None
 
 
@@ -191,8 +191,6 @@ def _quality_issues(quality: ImageQualityResult) -> list[str]:
         issues.append(f"image too blurry (score: {quality.blur_score})")
     if quality.low_resolution_detected:
         issues.append("image resolution too low")
-    if quality.glare_detected:
-        issues.append("glare detected on document")
     return issues
 
 
@@ -547,8 +545,6 @@ def _retake_reason(quality: ImageQualityResult) -> str:
     reasons = []
     if quality.blur_score is not None and quality.blur_score < 100:
         reasons.append(f"image too blurry (score: {quality.blur_score})")
-    if quality.glare_detected:
-        reasons.append("glare detected")
     if quality.low_resolution_detected:
         reasons.append("image resolution too low")
     return "; ".join(reasons) if reasons else "image quality unacceptable"

@@ -28,7 +28,6 @@ DECISION_CONFIG = {
 
 RETAKE_REASONS = {
     "image too blurry": ("이미지가 흐릿합니다", "카메라 초점을 맞추고 흔들리지 않게 촬영해주세요."),
-    "glare": ("빛반사가 감지되었습니다", "조명을 조절하거나 각도를 바꿔서 빛반사를 피해주세요."),
     "image resolution too low": ("해상도가 너무 낮습니다", "더 가까이에서 촬영해주세요."),
     "too small": ("이미지가 너무 작습니다", "문서가 크게 보이도록 촬영해주세요."),
     "nearly all black": ("이미지가 거의 검은색입니다", "밝은 환경에서 다시 촬영해주세요."),
@@ -50,7 +49,6 @@ REVIEW_REASONS = {
     "account_number confidence too low": "계좌번호 인식 신뢰도가 낮습니다",
     "bank_name field not found": "은행명을 찾을 수 없습니다",
     "bank_name confidence too low": "은행명 인식 신뢰도가 낮습니다",
-    "glare detected on document": "빛반사가 감지되었습니다",
     "image too blurry": "이미지가 흐릿합니다",
     "image resolution too low": "해상도가 낮습니다",
     "VLM could not determine document type": "문서 유형을 판별할 수 없습니다",
@@ -241,10 +239,9 @@ with col_img:
     st.image(uploaded, use_container_width=True)
     q = data["quality"]
     blur = q["blur_score"] if q["blur_score"] is not None else "—"
-    glare = "감지" if q["glare_detected"] else "정상"
     res = "부족" if q["low_resolution_detected"] else "정상"
     with st.expander("이미지 품질", expanded=False):
-        st.markdown(f'<div class="q-row"><span>선명도 <b>{blur}</b></span><span>빛반사 <b>{glare}</b></span><span>해상도 <b>{res}</b></span></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="q-row"><span>선명도 <b>{blur}</b></span><span>해상도 <b>{res}</b></span></div>', unsafe_allow_html=True)
 
 # ── Decision + Reason ──
 with col_info:
