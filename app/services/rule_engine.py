@@ -158,11 +158,14 @@ def _gate2_vlm_fallback(image_path: str, expected_type: DocumentType, quality: I
     if vlm_type == expected_vlm:
         return None  # match → 통과
 
-    # VLM이 unknown이거나 mismatch → strong OCR 근거 확인
+    has_fields = len(ocr.fields) > 0
+
+    # VLM이 unknown → 필드 있으면 Gate 3으로, 없으면 retake
     if vlm_type == "unknown":
+        if has_fields:
+            return None  # Gate 3에서 필드 기반 판정
         reason = vlm_desc or "VLM could not determine document type"
-        # 텍스트 부족이면 invalid 금지 → review
-        return _response(expected_type, Decision.REVIEW, reason, quality, ocr)
+        return _response(expected_type, Decision.RETAKE, reason, quality, ocr)
 
     # VLM이 다른 타입으로 판정
     detected = DocumentType.ID_CARD if vlm_type == "id_card" else DocumentType.BANK_ACCOUNT_DOC
@@ -170,14 +173,18 @@ def _gate2_vlm_fallback(image_path: str, expected_type: DocumentType, quality: I
 
     # 텍스트 부족 상태에서는 invalid 절대 금지
     if raw_len < MIN_RAW_TEXT_LENGTH:
-        return _response(expected_type, Decision.REVIEW, reason, quality, ocr)
+        if has_fields:
+            return None  # Gate 3으로
+        return _response(expected_type, Decision.RETAKE, reason, quality, ocr)
 
     # 반대 타입의 strong OCR signal이 있을 때만 invalid
     if _has_strong_ocr_signal(ocr, detected):
         return _response(detected, Decision.INVALID_DOC_TYPE, reason, quality, ocr)
 
-    # strong signal 없으면 review
-    return _response(expected_type, Decision.REVIEW, reason, quality, ocr)
+    # strong signal 없음: 필드 있으면 Gate 3으로, 없으면 retake
+    if has_fields:
+        return None
+    return _response(expected_type, Decision.RETAKE, reason, quality, ocr)
 
 
 # ──────────────────────────────────────────────
