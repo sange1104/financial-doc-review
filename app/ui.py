@@ -147,6 +147,12 @@ st.markdown(f"""
     /* expander 작게 */
     [data-testid="stExpander"] {{ font-size:0.8em; }}
     [data-testid="stExpander"] summary {{ font-size:0.85em; padding:4px 8px; }}
+    /* 라디오 버튼 스타일 */
+    .stRadio label p {{ color: #1e293b !important; font-weight: 400 !important; }}
+    .stRadio [role="radiogroup"] label div[data-testid="stMarkdownContainer"] {{ color: #1e293b !important; }}
+    .stRadio input[type="radio"] {{ accent-color: {B1}; }}
+    .stRadio [role="radio"] {{ border-color: #94a3b8 !important; background: white !important; }}
+    .stRadio [role="radio"][aria-checked="true"] {{ border-color: {B1} !important; background: {B1} !important; }}
     /* text_input 하단 안내 텍스트 숨김 + placeholder 스타일 */
     .stTextInput [data-testid="InputInstructions"] {{ display: none !important; }}
     .stTextInput input::placeholder {{ color: #b0bec5 !important; font-size: 0.85em; }}
