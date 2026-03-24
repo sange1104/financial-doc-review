@@ -1,0 +1,728 @@
+{
+  "blur/bank-account (1)_blur.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "name": "김투네",
+      "account_number": "312-1234-5678-90",
+      "bank_name": "NH Bank"
+    }
+  },
+  "blur/bank-account (1)_blur.png": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "name": "홍길동",
+      "account_number": "123-456-7890",
+      "bank_name": "우리은행"
+    }
+  },
+  "blur/bank-account (2)_blur.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "name": "김투네",
+      "account_number": "312-1234-5678-90",
+      "bank_name": "농협은행"
+    }
+  },
+  "blur/bank-account (3)_blur.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "name": "홍길동",
+      "account_number": "123-1234-1234-12",
+      "bank_name": "NH농협은행"
+    }
+  },
+  "blur/id_20250314112421388_8PFLXVJ5_blur.png": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "홍길순",
+      "id_number": "820701-2345678",
+      "address": "행복특별시 행복한구 행복로 1길 123 101동 101호",
+      "issue_date": "2019.03.01."
+    }
+  },
+  "blur/id_Korea ID version 2_blur.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "시민 존",
+      "id_number": "000000-0000000",
+      "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
+      "issue_date": "0000.0.00."
+    }
+  },
+  "blur/id_images_blur.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "김유스비",
+      "id_number": "960201-1234567",
+      "address": "서울특별시 마포구 마포대로 78 자람빌딩 8층 815호 (도화동)",
+      "issue_date": "2018.1.28."
+    }
+  },
+  "compression/bank-account (1)_compression.jpg": {
+    "doc_type": "bank_account",
+    "decision": "review",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "NH Bank",
+      "name": "김투네"
+    }
+  },
+  "compression/bank-account (1)_compression.png": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "123-456-7890",
+      "bank_name": "우리은행",
+      "name": "홍길동"
+    }
+  },
+  "compression/bank-account (2)_compression.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "농협은행",
+      "name": "김투네"
+    }
+  },
+  "compression/bank-account (3)_compression.jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "123-1234-1234-12",
+      "bank_name": "NH농협은행",
+      "name": "홍길동"
+    }
+  },
+  "compression/id_20250314112421388_8PFLXVJ5_compression.png": {
+    "doc_type": "id_card",
+    "decision": "pass",
+    "fields": {
+      "name": "홍길순",
+      "id_number": "820701-2345678",
+      "address": "행복특별시 행복한구 행복로 1길 123 101동 101호",
+      "issue_date": "2019.03.01."
+    }
+  },
+  "compression/id_Korea ID version 2_compression.jpg": {
+    "doc_type": "id_card",
+    "decision": "review",
+    "fields": {
+      "name": "시민 존",
+      "id_number": "000000-0000000",
+      "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
+      "issue_date": "0000.0.00."
+    }
+  },
+  "compression/id_images_compression.jpg": {
+    "doc_type": "id_card",
+    "decision": "review",
+    "fields": {
+      "name": "김유스비",
+      "id_number": "960201-1234567",
+      "address": "서울특별시 마포구 마포대로 78 자람빌딩 8층 815호 (도화동)",
+      "issue_date": "2018.1.28."
+    }
+  },
+  "crop/bank-account (1)_crop.jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "NH Bank",
+      "name": "김투네"
+    }
+  },
+  "crop/bank-account (1)_crop.png": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "123-456-7890",
+      "bank_name": "우리은행",
+      "name": "홍길동"
+    }
+  },
+  "crop/bank-account (2)_crop.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "농협은행",
+      "name": "김투네"
+    }
+  },
+  "crop/bank-account (3)_crop.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "123-1234-1234-12",
+      "bank_name": "NH농협은행",
+      "name": "홍길동"
+    }
+  },
+  "crop/id_20250314112421388_8PFLXVJ5_crop.png": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "홍길순",
+      "id_number": "820701-2345678",
+      "address": "행복특별시 행복한구 행복로 1길 123 101동 101호",
+      "issue_date": "2019.03.01."
+    }
+  },
+  "crop/id_Korea ID version 2_crop.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "시민 존",
+      "id_number": "000000-0000000",
+      "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
+      "issue_date": "0000.0.00."
+    }
+  },
+  "crop/id_images_crop.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "김유스비",
+      "id_number": "960201-1234567",
+      "address": "서울특별시 마포구 마포대로 78 자람빌딩 8층 815호 (도화동)",
+      "issue_date": "2018.1.28."
+    }
+  },
+  "crop_bottom/bank-account (1)_crop_bottom.jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "NH Bank",
+      "name": "김투네"
+    }
+  },
+  "crop_bottom/bank-account (1)_crop_bottom.png": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "123-456-7890",
+      "bank_name": "우리은행",
+      "name": "홍길동"
+    }
+  },
+  "crop_bottom/bank-account (2)_crop_bottom.jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "농협은행",
+      "name": "김투네"
+    }
+  },
+  "crop_bottom/bank-account (3)_crop_bottom.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "123-1234-1234-12",
+      "bank_name": "NH농협은행",
+      "name": "홍길동"
+    }
+  },
+  "crop_bottom/id_20250314112421388_8PFLXVJ5_crop_bottom.png": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "홍길순",
+      "id_number": "820701-2345678",
+      "address": "행복특별시 행복한구 행복로 1길 123 101동 101호",
+      "issue_date": "2019.03.01."
+    }
+  },
+  "crop_bottom/id_Korea ID version 2_crop_bottom.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "시민 존",
+      "id_number": "000000-0000000",
+      "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
+      "issue_date": "0000.0.00."
+    }
+  },
+  "crop_bottom/id_images_crop_bottom.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "김유스비",
+      "id_number": "960201-1234567",
+      "address": "서울특별시 마포구 마포대로 78 자람빌딩 8층 815호 (도화동)",
+      "issue_date": "2018.1.28."
+    }
+  },
+  "crop_left/bank-account (1)_crop_left.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "NH Bank",
+      "name": "김투네"
+    }
+  },
+  "crop_left/bank-account (1)_crop_left.png": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "123-456-7890",
+      "bank_name": "우리은행",
+      "name": "홍길동"
+    }
+  },
+  "crop_left/bank-account (2)_crop_left.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "농협은행",
+      "name": "김투네"
+    }
+  },
+  "crop_left/bank-account (3)_crop_left.jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "123-1234-1234-12",
+      "bank_name": "NH농협은행",
+      "name": "홍길동"
+    }
+  },
+  "crop_left/id_20250314112421388_8PFLXVJ5_crop_left.png": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "홍길순",
+      "id_number": "820701-2345678",
+      "address": "행복특별시 행복한구 행복로 1길 123 101동 101호",
+      "issue_date": "2019.03.01."
+    }
+  },
+  "crop_left/id_Korea ID version 2_crop_left.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "시민 존",
+      "id_number": "000000-0000000",
+      "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
+      "issue_date": "0000.0.00."
+    }
+  },
+  "crop_left/id_images_crop_left.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "김유스비",
+      "id_number": "960201-1234567",
+      "address": "서울특별시 마포구 마포대로 78 자람빌딩 8층 815호 (도화동)",
+      "issue_date": "2018.1.28."
+    }
+  },
+  "crop_top/bank-account (1)_crop_top.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "NH Bank",
+      "name": "김투네"
+    }
+  },
+  "crop_top/bank-account (1)_crop_top.png": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "123-456-7890",
+      "bank_name": "우리은행",
+      "name": "홍길동"
+    }
+  },
+  "crop_top/bank-account (2)_crop_top.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "농협은행",
+      "name": "김투네"
+    }
+  },
+  "crop_top/bank-account (3)_crop_top.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "123-1234-1234-12",
+      "bank_name": "NH농협은행",
+      "name": "홍길동"
+    }
+  },
+  "crop_top/id_20250314112421388_8PFLXVJ5_crop_top.png": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "홍길순",
+      "id_number": "820701-2345678",
+      "address": "행복특별시 행복한구 행복로 1길 123 101동 101호",
+      "issue_date": "2019.03.01."
+    }
+  },
+  "crop_top/id_Korea ID version 2_crop_top.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "시민 존",
+      "id_number": "000000-0000000",
+      "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
+      "issue_date": "0000.0.00."
+    }
+  },
+  "crop_top/id_images_crop_top.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "김유스비",
+      "id_number": "960201-1234567",
+      "address": "서울특별시 마포구 마포대로 78 자람빌딩 8층 815호 (도화동)",
+      "issue_date": "2018.1.28."
+    }
+  },
+  "downscale/bank-account (1)_downscale.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "NH Bank",
+      "name": "김투네"
+    }
+  },
+  "downscale/bank-account (1)_downscale.png": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "123-456-7890",
+      "bank_name": "우리은행",
+      "name": "홍길동"
+    }
+  },
+  "downscale/bank-account (2)_downscale.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "농협은행",
+      "name": "김투네"
+    }
+  },
+  "downscale/bank-account (3)_downscale.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "123-1234-1234-12",
+      "bank_name": "NH농협은행",
+      "name": "홍길동"
+    }
+  },
+  "downscale/id_20250314112421388_8PFLXVJ5_downscale.png": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "홍길순",
+      "id_number": "820701-2345678",
+      "address": "행복특별시 행복한구 행복로 1길 123 101동 101호",
+      "issue_date": "2019.03.01."
+    }
+  },
+  "downscale/id_Korea ID version 2_downscale.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "시민 존",
+      "id_number": "000000-0000000",
+      "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
+      "issue_date": "0000.0.00."
+    }
+  },
+  "downscale/id_images_downscale.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "김유스비",
+      "id_number": "960201-1234567",
+      "address": "서울특별시 마포구 마포대로 78 자람빌딩 8층 815호 (도화동)",
+      "issue_date": "2018.1.28."
+    }
+  },
+  "glare/bank-account (1)_glare.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "NH Bank",
+      "name": "김투네"
+    }
+  },
+  "glare/bank-account (1)_glare.png": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "123-456-7890",
+      "bank_name": "우리은행",
+      "name": "홍길동"
+    }
+  },
+  "glare/bank-account (2)_glare.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "농협은행",
+      "name": "김투네"
+    }
+  },
+  "glare/bank-account (3)_glare.jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "123-1234-1234-12",
+      "bank_name": "NH농협은행",
+      "name": "홍길동"
+    }
+  },
+  "glare/id_20250314112421388_8PFLXVJ5_glare.png": {
+    "doc_type": "id_card",
+    "decision": "pass",
+    "fields": {
+      "name": "홍길순",
+      "id_number": "820701-2345678",
+      "address": "행복특별시 행복한구 행복로 1길 123 101동 101호",
+      "issue_date": "2019.03.01."
+    }
+  },
+  "glare/id_Korea ID version 2_glare.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "시민 존",
+      "id_number": "000000-0000000",
+      "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
+      "issue_date": "0000.0.00."
+    }
+  },
+  "glare/id_images_glare.jpg": {
+    "doc_type": "id_card",
+    "decision": "retake",
+    "fields": {
+      "name": "김유스비",
+      "id_number": "960201-1234567",
+      "address": "서울특별시 마포구 마포대로 78 자람빌딩 8층 815호 (도화동)",
+      "issue_date": "2018.1.28."
+    }
+  },
+  "low_contrast/bank-account (1)_low_contrast.jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "NH Bank",
+      "name": "김투네"
+    }
+  },
+  "low_contrast/bank-account (1)_low_contrast.png": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "123-456-7890",
+      "bank_name": "우리은행",
+      "name": "홍길동"
+    }
+  },
+  "low_contrast/bank-account (2)_low_contrast.jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "농협은행",
+      "name": "김투네"
+    }
+  },
+  "low_contrast/bank-account (3)_low_contrast.jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "123-1234-1234-12",
+      "bank_name": "NH농협은행",
+      "name": "홍길동"
+    }
+  },
+  "low_contrast/id_20250314112421388_8PFLXVJ5_low_contrast.png": {
+    "doc_type": "id_card",
+    "decision": "pass",
+    "fields": {
+      "name": "홍길순",
+      "id_number": "820701-2345678",
+      "address": "행복특별시 행복한구 행복로 1길 123 101동 101호",
+      "issue_date": "2019.03.01."
+    }
+  },
+  "low_contrast/id_Korea ID version 2_low_contrast.jpg": {
+    "doc_type": "id_card",
+    "decision": "pass",
+    "fields": {
+      "name": "시민 존",
+      "id_number": "000000-0000000",
+      "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
+      "issue_date": "0000.0.00."
+    }
+  },
+  "low_contrast/id_images_low_contrast.jpg": {
+    "doc_type": "id_card",
+    "decision": "pass",
+    "fields": {
+      "name": "김유스비",
+      "id_number": "960201-1234567",
+      "address": "서울특별시 마포구 마포대로 78 자람빌딩 8층 815호 (도화동)",
+      "issue_date": "2018.1.28."
+    }
+  },
+  "rotation/bank-account (1)_rotation.jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "NH Bank",
+      "name": "김투네"
+    }
+  },
+  "rotation/bank-account (1)_rotation.png": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "123-456-7890",
+      "bank_name": "우리은행",
+      "name": "홍길동"
+    }
+  },
+  "rotation/bank-account (2)_rotation.jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "농협은행",
+      "name": "김투네"
+    }
+  },
+  "rotation/bank-account (3)_rotation.jpg": {
+    "doc_type": "bank_account",
+    "decision": "retake",
+    "fields": {
+      "account_number": "123-1234-1234-12",
+      "bank_name": "NH농협은행",
+      "name": "홍길동"
+    }
+  },
+  "rotation/id_20250314112421388_8PFLXVJ5_rotation.png": {
+    "doc_type": "id_card",
+    "decision": "pass",
+    "fields": {
+      "name": "홍길순",
+      "id_number": "820701-2345678",
+      "address": "행복특별시 행복한구 행복로 1길 123 101동 101호",
+      "issue_date": "2019.03.01."
+    }
+  },
+  "rotation/id_Korea ID version 2_rotation.jpg": {
+    "doc_type": "id_card",
+    "decision": "pass",
+    "fields": {
+      "name": "시민 존",
+      "id_number": "000000-0000000",
+      "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
+      "issue_date": "0000.0.00."
+    }
+  },
+  "rotation/id_images_rotation.jpg": {
+    "doc_type": "id_card",
+    "decision": "pass",
+    "fields": {
+      "name": "김유스비",
+      "id_number": "960201-1234567",
+      "address": "서울특별시 마포구 마포대로 78 자람빌딩 8층 815호 (도화동)",
+      "issue_date": "2018.1.28."
+    }
+  },
+  "valid/bank-account (1).jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "NH Bank",
+      "name": "김투네"
+    }
+  },
+  "valid/bank-account (1).png": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "123-456-7890",
+      "bank_name": "우리은행",
+      "name": "홍길동"
+    }
+  },
+  "valid/bank-account (2).jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "312-1234-5678-90",
+      "bank_name": "농협은행",
+      "name": "김투네"
+    }
+  },
+  "valid/bank-account (3).jpg": {
+    "doc_type": "bank_account",
+    "decision": "pass",
+    "fields": {
+      "account_number": "123-1234-1234-12",
+      "bank_name": "NH농협은행",
+      "name": "홍길동"
+    }
+  },
+  "valid/id_20250314112421388_8PFLXVJ5.png": {
+    "doc_type": "id_card",
+    "decision": "pass",
+    "fields": {
+      "name": "홍길순",
+      "id_number": "820701-2345678",
+      "address": "행복특별시 행복한구 행복로 1길 123 101동 101호",
+      "issue_date": "2019.03.01."
+    }
+  },
+  "valid/id_Korea ID version 2.jpg": {
+    "doc_type": "id_card",
+    "decision": "pass",
+    "fields": {
+      "name": "시민 존",
+      "id_number": "000000-0000000",
+      "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
+      "issue_date": "0000.0.00."
+    }
+  },
+  "valid/id_images.jpg": {
+    "doc_type": "id_card",
+    "decision": "pass",
+    "fields": {
+      "name": "김유스비",
+      "id_number": "960201-1234567",
+      "address": "서울특별시 마포구 마포대로 78 자람빌딩 8층 815호 (도화동)",
+      "issue_date": "2018.1.28."
+    }
+  }
+}
