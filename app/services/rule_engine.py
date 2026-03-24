@@ -127,34 +127,52 @@ def _gate2_document_type(ocr: OCRResult, expected_type: DocumentType, quality: I
     return None
 
 
+def _has_strong_ocr_signal(ocr: OCRResult, doc_type: DocumentType) -> bool:
+    """해당 문서 타입의 strong OCR signal이 있는지 확인."""
+    raw = ocr.raw_text or ""
+    if doc_type == DocumentType.ID_CARD:
+        return any(kw in raw for kw in ID_CARD_KEYWORDS)
+    elif doc_type == DocumentType.BANK_ACCOUNT_DOC:
+        return any(kw in raw for kw in BANK_KEYWORDS)
+    return False
+
+
 def _gate2_vlm_fallback(image_path: str, expected_type: DocumentType, quality: ImageQualityResult, ocr: OCRResult, on_progress=None) -> DocumentReviewResponse | None:
-    """VLM으로 문서 유형을 분류한다."""
+    """VLM으로 문서 유형을 분류한다.
+    VLM은 보조 신호이지 단독 판정자가 아니다.
+    invalid_doc_type은 반대 타입의 strong OCR signal이 있을 때만 허용."""
     from app.services.vlm_service import classify_document_type
 
     _notify = on_progress or (lambda msg: None)
     _notify("🤖 VLM으로 문서를 분석하고 있습니다...")
 
+    raw_len = len(ocr.raw_text or "")
     vlm_type, vlm_desc = classify_document_type(image_path)
-
     expected_vlm = "id_card" if expected_type == DocumentType.ID_CARD else "bank_account"
 
     if vlm_type == expected_vlm:
         return None  # match → 통과
 
+    # VLM이 unknown이거나 mismatch → strong OCR 근거 확인
     if vlm_type == "unknown":
         reason = vlm_desc or "VLM could not determine document type"
-        return _response(DocumentType.UNKNOWN, Decision.INVALID_DOC_TYPE, reason, quality, ocr)
+        # 텍스트 부족이면 invalid 금지 → review
+        return _response(expected_type, Decision.REVIEW, reason, quality, ocr)
 
     # VLM이 다른 타입으로 판정
     detected = DocumentType.ID_CARD if vlm_type == "id_card" else DocumentType.BANK_ACCOUNT_DOC
-    reason = vlm_desc or f"Expected {'ID card' if expected_type == DocumentType.ID_CARD else 'bank account'} but VLM detected {'ID card' if vlm_type == 'id_card' else 'bank account'}"
+    reason = vlm_desc or f"VLM detected {vlm_type}"
 
-    return _response(
-        detected,
-        Decision.INVALID_DOC_TYPE,
-        reason,
-        quality, ocr,
-    )
+    # 텍스트 부족 상태에서는 invalid 절대 금지
+    if raw_len < MIN_RAW_TEXT_LENGTH:
+        return _response(expected_type, Decision.REVIEW, reason, quality, ocr)
+
+    # 반대 타입의 strong OCR signal이 있을 때만 invalid
+    if _has_strong_ocr_signal(ocr, detected):
+        return _response(detected, Decision.INVALID_DOC_TYPE, reason, quality, ocr)
+
+    # strong signal 없으면 review
+    return _response(expected_type, Decision.REVIEW, reason, quality, ocr)
 
 
 # ──────────────────────────────────────────────
