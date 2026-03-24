@@ -92,3 +92,91 @@ def classify_document_type(image_path: str) -> tuple[str, str]:
         return "bank_account", description
     else:
         return "unknown", description
+
+
+def reread_fields(image_path: str, fields: list[str]) -> dict[str, dict]:
+    """VLM으로 특정 필드를 다시 읽는다.
+
+    Returns:
+        {field_name: {"value": str, "readable": bool}} 매핑.
+        readable=False면 value는 "unknown".
+    """
+    model, processor = _load_model()
+
+    field_descriptions = {
+        "name": "이름 (예: 홍길동)",
+        "id_number": "주민등록번호 (예: 880101-1234567)",
+        "address": "주소",
+        "issue_date": "발급일 (예: 2020.01.01)",
+        "account_number": "계좌번호 (예: 110-123-456789)",
+        "bank_name": "은행명 (예: 국민은행)",
+    }
+
+    fields_text = "\n".join(
+        f"- {f}: {field_descriptions.get(f, f)}"
+        for f in fields
+    )
+
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "image", "image": f"file://{image_path}"},
+                {
+                    "type": "text",
+                    "text": (
+                        "이 문서 이미지에서 아래 항목들을 읽어주세요.\n\n"
+                        f"## 읽어야 할 항목\n{fields_text}\n\n"
+                        "## 중요 규칙\n"
+                        "- 명확하게 보이는 값만 읽으세요.\n"
+                        "- 추측하지 마세요. 조금이라도 불확실하면 반드시 unknown으로 답하세요.\n"
+                        "- 흐리거나 가려진 부분은 unknown입니다.\n\n"
+                        "## 답변 형식 (한 줄에 하나씩)\n"
+                        "필드명: 값\n\n"
+                        "## 예시\n"
+                        "name: 홍길동\n"
+                        "id_number: unknown\n"
+                        "bank_name: 국민은행\n"
+                        "account_number: 110-123-456789"
+                    ),
+                },
+            ],
+        }
+    ]
+
+    text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    image_inputs, video_inputs = process_vision_info(messages)
+    inputs = processor(
+        text=[text],
+        images=image_inputs,
+        videos=video_inputs,
+        padding=True,
+        return_tensors="pt",
+    ).to(model.device)
+
+    output_ids = model.generate(**inputs, max_new_tokens=120)
+    trimmed = output_ids[0][inputs.input_ids.shape[1]:]
+    response = processor.decode(trimmed, skip_special_tokens=True).strip()
+
+    # 파싱
+    result: dict[str, dict] = {}
+    for line in response.splitlines():
+        line = line.strip()
+        if ":" not in line:
+            continue
+        key, _, val = line.partition(":")
+        key = key.strip().lower()
+        val = val.strip()
+        if key in fields:
+            is_unknown = val.lower() in ("unknown", "없음", "모름", "불명", "")
+            result[key] = {
+                "value": "unknown" if is_unknown else val,
+                "readable": not is_unknown,
+            }
+
+    # 요청한 필드 중 응답에 없는 건 unknown 처리
+    for f in fields:
+        if f not in result:
+            result[f] = {"value": "unknown", "readable": False}
+
+    return result

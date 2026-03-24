@@ -15,7 +15,12 @@ CRITICAL_CONFIDENCE = 0.7   # 핵심 필드 (id_number, account_number)
 NAME_CONFIDENCE = 0.6       # 이름 (heuristic 추출이라 기준 낮춤)
 SECONDARY_CONFIDENCE = 0.5  # 보조 필드 (bank_name)
 CHAR_CONFIDENCE = 0.5       # 글자별 최소 confidence (이하이면 해당 글자 review)
+VLM_REREAD_CONFIDENCE = 0.8 # VLM reread로 보완된 text 필드의 confidence
 MIN_RAW_TEXT_LENGTH = 10
+
+# 필드 분류: text vs numeric
+NUMERIC_FIELDS = {"id_number", "account_number"}
+TEXT_FIELDS = {"name", "bank_name", "address", "issue_date"}
 MIN_IMAGE_PIXELS = 100
 BLACK_WHITE_THRESHOLD = 0.95
 
@@ -358,8 +363,80 @@ def _gate4_validation_bank(ocr: OCRResult, quality: ImageQualityResult) -> Docum
 
 
 # ──────────────────────────────────────────────
+# VLM Reread 보완
+# ──────────────────────────────────────────────
+
+def _collect_problem_fields(ocr: OCRResult, required_fields: list[str]) -> list[str]:
+    """missing 또는 low-confidence 필드 목록을 반환."""
+    problems = []
+    for fname in required_fields:
+        field = _get_field(ocr, fname)
+        if field is None:
+            problems.append(fname)
+        elif fname in NUMERIC_FIELDS and field.confidence < CRITICAL_CONFIDENCE:
+            problems.append(fname)
+        elif fname in TEXT_FIELDS and field.confidence < NAME_CONFIDENCE:
+            problems.append(fname)
+    return problems
+
+
+def _apply_vlm_reread(
+    ocr: OCRResult, image_path: str, problem_fields: list[str], on_progress=None,
+) -> OCRResult:
+    """VLM reread 결과를 OCR에 보완 적용. text/numeric 규칙에 따라 처리."""
+    from app.services.vlm_service import reread_fields
+
+    _notify = on_progress or (lambda msg: None)
+    _notify("🤖 VLM으로 누락/불확실 필드를 다시 읽고 있습니다...")
+
+    vlm_results = reread_fields(image_path, problem_fields)
+
+    for fname, vlm_res in vlm_results.items():
+        if not vlm_res["readable"]:
+            continue  # unknown → 보완 불가
+
+        vlm_value = vlm_res["value"]
+        existing = _get_field(ocr, fname)
+        is_numeric = fname in NUMERIC_FIELDS
+
+        if existing is None:
+            # Case A/C: missing field
+            if is_numeric:
+                # numeric missing → VLM 값을 넣되 low confidence로 review 유지
+                ocr.fields.append(OCRField(
+                    field_name=fname, value=vlm_value, confidence=SECONDARY_CONFIDENCE,
+                ))
+            else:
+                # text missing → VLM 값으로 보완
+                ocr.fields.append(OCRField(
+                    field_name=fname, value=vlm_value, confidence=VLM_REREAD_CONFIDENCE,
+                ))
+        else:
+            # Case B/D: low-confidence field
+            if is_numeric:
+                # numeric low-conf → OCR과 VLM이 정확히 일치할 때만 승격
+                if vlm_value == existing.value:
+                    existing.confidence = max(existing.confidence, VLM_REREAD_CONFIDENCE)
+                # 다르면 review 유지 (기존 값 유지)
+            else:
+                # text low-conf → VLM 값이 있으면 confidence 승격
+                if vlm_value == existing.value:
+                    existing.confidence = max(existing.confidence, VLM_REREAD_CONFIDENCE)
+                else:
+                    # VLM이 다른 값 → VLM 값으로 대체하되 중간 confidence
+                    existing.value = vlm_value
+                    existing.confidence = NAME_CONFIDENCE
+
+    return ocr
+
+
+# ──────────────────────────────────────────────
 # 메인 평가 함수
 # ──────────────────────────────────────────────
+
+ID_REQUIRED_FIELDS = ["name", "id_number"]
+BANK_REQUIRED_FIELDS = ["name", "account_number", "bank_name"]
+
 
 def evaluate_id_card(image_path: str, on_progress=None) -> DocumentReviewResponse:
     _notify = on_progress or (lambda msg: None)
@@ -385,7 +462,20 @@ def evaluate_id_card(image_path: str, on_progress=None) -> DocumentReviewRespons
     _notify("✅ 추출된 정보를 검증하고 있습니다...")
     result = _gate3_required_fields_id(ocr, quality)
     if result:
-        return result
+        # Gate 3 review → VLM reread 시도 (retake는 제외)
+        if result.decision == Decision.REVIEW:
+            problems = _collect_problem_fields(ocr, ID_REQUIRED_FIELDS)
+            if problems:
+                ocr = _apply_vlm_reread(ocr, image_path, problems, on_progress=on_progress)
+                # Gate 3 재평가
+                result2 = _gate3_required_fields_id(ocr, quality)
+                if result2:
+                    return result2
+                # Gate 3 통과 → Gate 4로 진행
+            else:
+                return result
+        else:
+            return result
 
     # Gate 4: 형식 검증
     result = _gate4_validation_id(ocr, quality)
@@ -421,7 +511,20 @@ def evaluate_bank_account(image_path: str, on_progress=None) -> DocumentReviewRe
     _notify("✅ 추출된 정보를 검증하고 있습니다...")
     result = _gate3_required_fields_bank(ocr, quality)
     if result:
-        return result
+        # Gate 3 review → VLM reread 시도 (retake는 제외)
+        if result.decision == Decision.REVIEW:
+            problems = _collect_problem_fields(ocr, BANK_REQUIRED_FIELDS)
+            if problems:
+                ocr = _apply_vlm_reread(ocr, image_path, problems, on_progress=on_progress)
+                # Gate 3 재평가
+                result2 = _gate3_required_fields_bank(ocr, quality)
+                if result2:
+                    return result2
+                # Gate 3 통과 → Gate 4로 진행
+            else:
+                return result
+        else:
+            return result
 
     # Gate 4: 형식 검증
     result = _gate4_validation_bank(ocr, quality)
