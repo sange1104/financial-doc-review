@@ -14,6 +14,12 @@ FIELD_LABELS = {
     "bank_name": "🏦 은행명",
 }
 
+# 문서 타입별 필수 필드 (review 시 누락 필드도 편집 가능하도록)
+REQUIRED_FIELDS = {
+    "id_card": ["name", "id_number", "address", "issue_date"],
+    "bank_account_doc": ["name", "account_number", "bank_name"],
+}
+
 DECISION_CONFIG = {
     "pass": {
         "icon": "✅",
@@ -449,6 +455,18 @@ with col_ocr:
     else:
         fields = data["ocr"]["fields"]
         if is_review:
+            # 누락된 필수 필드를 빈 필드로 추가
+            doc_type_key = data.get("document_type", "")
+            required = REQUIRED_FIELDS.get(doc_type_key, [])
+            existing_names = {f["field_name"] for f in fields}
+            for req_name in required:
+                if req_name not in existing_names:
+                    fields.append({
+                        "field_name": req_name,
+                        "value": "",
+                        "confidence": 0.0,
+                        "char_confidences": [],
+                    })
             fields = sorted(fields, key=lambda f: f["confidence"])
 
         for field in fields:
@@ -465,23 +483,15 @@ with col_ocr:
                 conf_class = "conf-low"
 
             if editing:
-                # 편집 모드: 색상 힌트 + 입력 필드
-                chars_hint = _render_char_confs_hint(char_confs)
-                if chars_hint:
-                    st.markdown(f"""
-                    <div style="margin-bottom: -10px;">
-                        <span style="font-size: 0.8em; color: #888;">{label}</span>
-                        <span class="conf-badge {conf_class}" style="font-size: 0.75em;">{conf:.0%}</span>
-                    </div>
-                    <div style="font-size: 1.1em; margin-bottom: 2px; font-family: monospace;">{chars_hint}</div>
-                    """, unsafe_allow_html=True)
-
+                # 편집 모드: placeholder에 OCR 결과, 입력란에서 수정
+                placeholder_text = field["value"] or ""
                 low_hint = _get_low_conf_hint(char_confs)
+                conf_text = f" ({conf:.0%})" if conf > 0 else ""
                 edited = st.text_input(
-                    label if not chars_hint else "수정값",
+                    f"{label}{conf_text}",
                     value=field["value"] or "",
                     key=f"edit_{fname}",
-                    label_visibility="collapsed" if chars_hint else "visible",
+                    placeholder=f"OCR: {placeholder_text}" if placeholder_text else "미검출 — 직접 입력",
                 )
                 if low_hint:
                     st.caption(low_hint)
@@ -492,11 +502,14 @@ with col_ocr:
                 confirmed_value = st.session_state.edited_fields.get(fname, field["value"])
                 changed = confirmed_value != field["value"]
                 badge = ' <span style="background:#1565c0;color:#fff;padding:1px 8px;border-radius:10px;font-size:0.75em;">수정됨</span>' if changed else ""
+                display_value = confirmed_value if confirmed_value else '<span style="color:#bbb;">미입력</span>'
                 st.markdown(f"""
                 <div class="field-card">
                     <div class="field-label">{label}{badge}</div>
-                    <span class="field-value">{confirmed_value}</span>
-                    <span class="conf-badge {conf_class}">{conf:.0%}</span>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <span class="field-value">{display_value}</span>
+                        <span class="conf-badge {conf_class}">{conf:.0%}</span>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
 
