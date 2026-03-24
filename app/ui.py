@@ -190,6 +190,7 @@ if st.session_state.get("_ck") != cache_key:
 
 if st.session_state._cd is None:
     data = None
+    vlm_data = None
     with st.status("분석 중...", expanded=True) as status:
         step = st.empty()
         resp = requests.post(endpoint, files={"file": (uploaded.name, uploaded.getvalue(), uploaded.type)}, stream=True)
@@ -204,6 +205,12 @@ if st.session_state._cd is None:
                 step.markdown(ev["message"])
             elif ev["type"] == "result":
                 data = ev["data"]
+                # 1차 결과 즉시 표시를 위해 status 업데이트
+                status.update(label="OCR 완료 — VLM 분석 중...", state="running")
+            elif ev["type"] == "vlm_update":
+                vlm_data = ev["data"]
+            elif ev["type"] == "done":
+                break
             elif ev["type"] == "error":
                 st.error(f"오류: {ev['message']}")
                 st.stop()
@@ -212,9 +219,12 @@ if st.session_state._cd is None:
     if data is None:
         st.error("응답 없음")
         st.stop()
-    st.session_state._cd = data
+    # VLM 업데이트가 있으면 최종 결과로 사용
+    st.session_state._cd = vlm_data if vlm_data else data
 else:
-    data = st.session_state._cd
+    data = None
+
+data = st.session_state._cd
 
 decision = data["decision"]
 cfg = DECISION_CONFIG[decision]

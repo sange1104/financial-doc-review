@@ -443,7 +443,28 @@ ID_REQUIRED_FIELDS = ["name", "id_number"]
 BANK_REQUIRED_FIELDS = ["name", "account_number", "bank_name"]
 
 
-def evaluate_id_card(image_path: str, on_progress=None) -> DocumentReviewResponse:
+def _gate2_document_type_keyword_only(ocr: OCRResult, expected_type: DocumentType, quality: ImageQualityResult) -> DocumentReviewResponse | None:
+    """VLM 없이 키워드만으로 문서 유형 검증. 애매하면 Gate 3으로 넘김."""
+    raw = ocr.raw_text or ""
+    has_id = any(kw in raw for kw in ID_CARD_KEYWORDS)
+    has_bank = any(kw in raw for kw in BANK_KEYWORDS)
+
+    if expected_type == DocumentType.ID_CARD and has_bank and not has_id:
+        return _response(DocumentType.BANK_ACCOUNT_DOC, Decision.INVALID_DOC_TYPE,
+                         "Expected ID card but detected bank account document", quality, ocr)
+    if expected_type == DocumentType.BANK_ACCOUNT_DOC and has_id and not has_bank:
+        return _response(DocumentType.ID_CARD, Decision.INVALID_DOC_TYPE,
+                         "Expected bank account document but detected ID card", quality, ocr)
+
+    q_issues = _quality_issues(quality)
+    if q_issues and not has_id and not has_bank:
+        reason = "; ".join(q_issues) + "; OCR could not identify document type"
+        return _response(expected_type, Decision.RETAKE, reason, quality, ocr)
+
+    return None
+
+
+def evaluate_id_card(image_path: str, on_progress=None, skip_vlm=False) -> DocumentReviewResponse:
     _notify = on_progress or (lambda msg: None)
 
     _notify("🔍 이미지 품질을 검사하고 있습니다...")
@@ -459,7 +480,10 @@ def evaluate_id_card(image_path: str, on_progress=None) -> DocumentReviewRespons
 
     # Gate 2: 문서 유형
     _notify("🔎 문서 유형을 확인하고 있습니다...")
-    result = _gate2_document_type(ocr, DocumentType.ID_CARD, quality, image_path, on_progress=on_progress)
+    if skip_vlm:
+        result = _gate2_document_type_keyword_only(ocr, DocumentType.ID_CARD, quality)
+    else:
+        result = _gate2_document_type(ocr, DocumentType.ID_CARD, quality, image_path, on_progress=on_progress)
     if result:
         return result
 
@@ -467,16 +491,13 @@ def evaluate_id_card(image_path: str, on_progress=None) -> DocumentReviewRespons
     _notify("✅ 추출된 정보를 검증하고 있습니다...")
     result = _gate3_required_fields_id(ocr, quality)
     if result:
-        # Gate 3 review → VLM reread 시도 (retake는 제외)
-        if result.decision == Decision.REVIEW:
+        if not skip_vlm and result.decision == Decision.REVIEW:
             problems = _collect_problem_fields(ocr, ID_REQUIRED_FIELDS)
             if problems:
                 ocr = _apply_vlm_reread(ocr, image_path, problems, on_progress=on_progress)
-                # Gate 3 재평가
                 result2 = _gate3_required_fields_id(ocr, quality)
                 if result2:
                     return result2
-                # Gate 3 통과 → Gate 4로 진행
             else:
                 return result
         else:
@@ -492,7 +513,7 @@ def evaluate_id_card(image_path: str, on_progress=None) -> DocumentReviewRespons
                      "모든 필수 정보가 정상적으로 확인되었습니다", quality, ocr)
 
 
-def evaluate_bank_account(image_path: str, on_progress=None) -> DocumentReviewResponse:
+def evaluate_bank_account(image_path: str, on_progress=None, skip_vlm=False) -> DocumentReviewResponse:
     _notify = on_progress or (lambda msg: None)
 
     _notify("🔍 이미지 품질을 검사하고 있습니다...")
@@ -508,7 +529,10 @@ def evaluate_bank_account(image_path: str, on_progress=None) -> DocumentReviewRe
 
     # Gate 2: 문서 유형
     _notify("🔎 문서 유형을 확인하고 있습니다...")
-    result = _gate2_document_type(ocr, DocumentType.BANK_ACCOUNT_DOC, quality, image_path, on_progress=on_progress)
+    if skip_vlm:
+        result = _gate2_document_type_keyword_only(ocr, DocumentType.BANK_ACCOUNT_DOC, quality)
+    else:
+        result = _gate2_document_type(ocr, DocumentType.BANK_ACCOUNT_DOC, quality, image_path, on_progress=on_progress)
     if result:
         return result
 
@@ -516,23 +540,19 @@ def evaluate_bank_account(image_path: str, on_progress=None) -> DocumentReviewRe
     _notify("✅ 추출된 정보를 검증하고 있습니다...")
     result = _gate3_required_fields_bank(ocr, quality)
     if result:
-        # Gate 3 review → VLM reread 시도 (retake는 제외)
-        if result.decision == Decision.REVIEW:
+        if not skip_vlm and result.decision == Decision.REVIEW:
             problems = _collect_problem_fields(ocr, BANK_REQUIRED_FIELDS)
             if problems:
                 ocr = _apply_vlm_reread(ocr, image_path, problems, on_progress=on_progress)
-                # VLM reread 후에도 계좌번호 없으면 retake
                 if not _get_field(ocr, "account_number"):
                     return _response(
                         DocumentType.BANK_ACCOUNT_DOC, Decision.RETAKE,
                         "account_number not found after OCR + VLM reread",
                         quality, ocr,
                     )
-                # Gate 3 재평가
                 result2 = _gate3_required_fields_bank(ocr, quality)
                 if result2:
                     return result2
-                # Gate 3 통과 → Gate 4로 진행
             else:
                 return result
         else:
