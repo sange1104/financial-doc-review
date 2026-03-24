@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OCRGate - Financial Document Review System</title>
+<style>
+  @page { size: A4; margin: 0; }
+
+  :root {
+    --primary: #1E46FA;
+    --primary-light: #eef2ff;
+    --accent: #377FF7;
+    --dark: #0f172a;
+    --gray: #64748b;
+    --light-gray: #f1f5f9;
+    --border: #e2e8f0;
+    --pass: #16a34a;
+    --retake: #dc2626;
+    --review: #d97706;
+    --invalid: #7c3aed;
+
+    --page-w: 210mm;
+    --page-h: 297mm;
+    --pad: 18mm;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--dark);
+    line-height: 1.65;
+    background: #e5e7eb;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ── PAGE ── */
+  .page {
+    width: var(--page-w);
+    min-height: var(--page-h);
+    margin: 12mm auto;
+    padding: var(--pad);
+    background: white;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.12);
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+  }
+  @media print {
+    body { background: white; }
+    .page { margin: 0; box-shadow: none; }
+  }
+
+  /* ── PAGE FOOTER ── */
+  .page-footer {
+    position: absolute; bottom: 10mm; left: var(--pad); right: var(--pad);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 7pt; color: #94a3b8;
+    border-top: 0.5px solid var(--border); padding-top: 3mm;
+  }
+
+  /* ── COVER ── */
+  .cover {
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    height: calc(var(--page-h) - var(--pad) * 2);
+    text-align: center;
+  }
+  .cover-badge {
+    font-size: 7.5pt; font-weight: 700; color: var(--primary);
+    background: var(--primary-light); border: 1px solid var(--primary);
+    padding: 2pt 10pt; border-radius: 99px; letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 6mm;
+  }
+  .cover h1 { font-size: 28pt; font-weight: 800; letter-spacing: -0.5px; }
+  .cover h1 span { color: var(--primary); }
+  .cover .sub {
+    font-size: 11pt; color: var(--gray); margin-top: 4mm;
+    max-width: 380px; line-height: 1.6;
+  }
+  .cover .tags { margin-top: 8mm; display: flex; gap: 3mm; flex-wrap: wrap; justify-content: center; }
+  .cover .tag {
+    padding: 1.5pt 7pt; border-radius: 99px; font-size: 7pt; font-weight: 600;
+    background: white; color: var(--primary); border: 0.5px solid var(--primary);
+  }
+  .cover .meta {
+    margin-top: 16mm; font-size: 8.5pt; color: #94a3b8; line-height: 1.8;
+  }
+  .cover-line {
+    width: 40mm; height: 0.5px; background: var(--border); margin: 8mm auto;
+  }
+
+  /* ── TYPOGRAPHY ── */
+  h2 {
+    font-size: 14pt; font-weight: 800; margin-bottom: 2mm;
+    padding-bottom: 2mm; border-bottom: 2px solid var(--primary);
+    display: flex; align-items: center; gap: 2mm;
+  }
+  h2 .num {
+    font-size: 7pt; font-weight: 700; color: white; background: var(--primary);
+    width: 16px; height: 16px; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  h3 {
+    font-size: 10pt; font-weight: 700; margin: 4mm 0 2mm; color: var(--dark);
+  }
+  p, li { font-size: 8.5pt; }
+  .subtitle { color: var(--gray); font-size: 8.5pt; margin-bottom: 4mm; }
+
+  /* ── HIGHLIGHT ── */
+  .hl {
+    background: var(--primary-light); border-left: 3px solid var(--primary);
+    padding: 2.5mm 3.5mm; border-radius: 0 5px 5px 0;
+    margin: 3mm 0; font-size: 8pt; line-height: 1.7;
+  }
+  .hl strong { color: var(--primary); }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block; padding: 0.5pt 5pt; border-radius: 3px;
+    font-size: 7pt; font-weight: 700; color: white;
+  }
+  .badge.pass { background: var(--pass); }
+  .badge.retake { background: var(--retake); }
+  .badge.review { background: var(--review); }
+  .badge.invalid { background: var(--invalid); }
+
+  /* ── CARDS ── */
+  .card-grid { display: grid; gap: 2.5mm; }
+  .card-grid.c2 { grid-template-columns: 1fr 1fr; }
+  .card-grid.c3 { grid-template-columns: 1fr 1fr 1fr; }
+  .card {
+    background: var(--light-gray); border-radius: 6px; padding: 3mm;
+  }
+  .card h4 { font-size: 8.5pt; font-weight: 700; margin-bottom: 1mm; }
+  .card p { font-size: 7.5pt; color: var(--gray); line-height: 1.6; }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; font-size: 7.5pt; margin: 2mm 0; }
+  thead th {
+    text-align: left; padding: 1.5mm 2mm; font-weight: 700;
+    border-bottom: 1.5px solid var(--primary); color: var(--primary); font-size: 7pt;
+  }
+  tbody td { padding: 1.5mm 2mm; border-bottom: 0.5px solid var(--border); }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+
+  /* ── PIPELINE DIAGRAM ── */
+  .pipeline { position: relative; padding-left: 14mm; }
+  .pipeline::before {
+    content: ''; position: absolute; left: 4.5mm; top: 4mm; bottom: 4mm;
+    width: 1.5px; background: var(--border);
+  }
+  .pipe-step {
+    position: relative; padding: 2.5mm 3mm; margin-bottom: 2mm;
+    background: var(--light-gray); border-radius: 5px;
+  }
+  .pipe-step::before {
+    content: ''; position: absolute; left: -14mm; top: 50%;
+    transform: translate(3mm, -50%);
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--primary); border: 2px solid var(--primary-light);
+    z-index: 1;
+  }
+  .pipe-step .sl {
+    font-size: 6pt; font-weight: 700; color: var(--primary);
+    text-transform: uppercase; letter-spacing: 0.8px;
+  }
+  .pipe-step h4 { font-size: 8.5pt; font-weight: 700; margin: 0.5mm 0; }
+  .pipe-step p { font-size: 7pt; color: var(--gray); line-height: 1.5; }
+  .pipe-step .decs { display: flex; gap: 1.5mm; margin-top: 1.5mm; }
+  .pipe-step .dec {
+    font-size: 6pt; font-weight: 700; padding: 0.5pt 4pt;
+    border-radius: 2px; color: white;
+  }
+  .dec.retake { background: var(--retake); }
+  .dec.review { background: var(--review); }
+  .dec.invalid { background: var(--invalid); }
+  .dec.pass { background: var(--pass); }
+  .dec.next { background: #94a3b8; }
+
+  /* ── ARCH GRID ── */
+  .arch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.5mm; }
+  .arch-box {
+    background: var(--light-gray); border-radius: 6px;
+    padding: 3mm; text-align: center;
+  }
+  .arch-box .icon { font-size: 14pt; margin-bottom: 1mm; }
+  .arch-box h4 { font-size: 8pt; font-weight: 700; }
+  .arch-box p { font-size: 6.5pt; color: var(--gray); margin-top: 0.5mm; }
+
+  /* ── UI MOCKUP ── */
+  .ui-mock {
+    background: var(--light-gray); border-radius: 6px; overflow: hidden;
+    border: 0.5px solid var(--border);
+  }
+  .ui-mock-header {
+    background: linear-gradient(135deg, var(--primary-light), #dbeafe);
+    padding: 2mm 3mm; display: flex; align-items: center; gap: 1.5mm;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .ui-mock-header .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .ui-mock-header span { font-size: 7pt; font-weight: 700; color: var(--primary); margin-left: 1.5mm; }
+  .ui-mock-body { padding: 3mm; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; }
+  .ui-col h5 {
+    font-size: 6pt; font-weight: 700; color: var(--primary);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.5mm;
+  }
+  .ui-img-ph {
+    background: linear-gradient(135deg, #f0f4ff, #e8eeff);
+    border-radius: 4px; height: 28mm;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 7pt; color: var(--accent); font-weight: 600;
+  }
+  .ui-strip {
+    display: flex; align-items: center; gap: 2mm; padding: 1.5mm 2.5mm;
+    border-radius: 4px; margin-bottom: 1.5mm;
+  }
+  .ui-strip span { font-size: 6.5pt; }
+  .ui-field {
+    display: flex; align-items: center; padding: 1mm 2mm; margin: 0.8mm 0;
+    background: white; border-radius: 3px; font-size: 7pt;
+  }
+  .ui-field .fl { color: var(--gray); font-size: 6pt; min-width: 14mm; }
+  .ui-field .fv { flex: 1; font-weight: 600; }
+  .ui-field .fc { font-size: 5.5pt; font-weight: 700; padding: 0.5pt 3pt; border-radius: 2px; }
+  .fc.h { background: #dcfce7; color: #166534; }
+  .fc.m { background: #fef3c7; color: #92400e; }
+  .fc.l { background: #fee2e2; color: #991b1b; }
+  .ui-reason {
+    font-size: 6.5pt; padding: 1.5mm 2.5mm; border-radius: 3px; margin-top: 1.5mm;
+    line-height: 1.5;
+  }
+
+  /* ── STAT ROW ── */
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5mm; margin-bottom: 4mm; }
+  .stat {
+    background: var(--light-gray); border-radius: 6px;
+    padding: 2.5mm; text-align: center;
+  }
+  .stat .n { font-size: 18pt; font-weight: 800; color: var(--primary); }
+  .stat .l { font-size: 6.5pt; color: var(--gray); }
+
+  /* ── PRINCIPLE ── */
+  .pr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5mm; }
+  .pr {
+    background: var(--light-gray); border-radius: 6px; padding: 2.5mm 3mm;
+  }
+  .pr .icon { font-size: 10pt; float: left; margin-right: 2mm; }
+  .pr h4 { font-size: 8pt; font-weight: 700; margin-bottom: 0.5mm; }
+  .pr p { font-size: 6.8pt; color: var(--gray); line-height: 1.5; }
+
+  /* ── TECH ── */
+  .tech-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; }
+  .tech {
+    background: var(--light-gray); border-radius: 5px;
+    padding: 2mm 2.5mm; text-align: center;
+  }
+  .tech .ti { font-size: 12pt; }
+  .tech .tn { font-size: 7.5pt; font-weight: 700; }
+  .tech .td { font-size: 6pt; color: var(--gray); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAGE 1: COVER -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="page">
+  <div class="cover">
+    <div class="cover-badge">Portfolio Project</div>
+    <h1><span>OCRGate</span></h1>
+    <h1 style="font-size:16pt;font-weight:600;color:var(--gray);margin-top:2mm;">Financial Document Review System</h1>
+    <div class="cover-line"></div>
+    <div class="sub">
+      불완전한 입력 하에서의 의사결정 문제로 정의한<br>
+      금융 문서(신분증·통장사본) 자동 검증 시스템
+    </div>
+    <div class="tags">
+      <span class="tag">PaddleOCR</span>
+      <span class="tag">Qwen3-VL-4B</span>
+      <span class="tag">FastAPI</span>
+      <span class="tag">Streamlit</span>
+      <span class="tag">Rule Engine</span>
+      <span class="tag">SSE Streaming</span>
+    </div>
+    <div class="cover-line"></div>
+    <div class="meta">
+      OCR + Rule-based Pipeline + Vision-Language Model<br>
+      4-Gate Decision Engine · Character-level Confidence · 2-Phase SSE
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAGE 2: PROBLEM + PIPELINE -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="page">
+  <h2><span class="num">1</span> Problem Definition</h2>
+  <p class="subtitle">금융 서비스에서 사용자가 업로드하는 문서는 블러, 크롭, 글레어 등으로 불완전합니다.</p>
+
+  <div class="hl">
+    <strong>핵심 과제:</strong> <em>input quality failure</em>(재촬영 필요)와 <em>semantic uncertainty</em>(담당자 확인 필요)를 구분하는 것. retake 남용은 UX 저하, review 남용은 운영 비용 증가.
+  </div>
+
+  <div class="card-grid c3" style="margin-top:3mm;">
+    <div class="card">
+      <h4>Input Types</h4>
+      <p>신분증(주민등록증)과 통장사본. 문서 유형별 필수 필드를 정의하고 추출.</p>
+    </div>
+    <div class="card">
+      <h4>Decision Space</h4>
+      <p>
+        <span class="badge pass">PASS</span> 자동 승인 &nbsp;
+        <span class="badge retake">RETAKE</span> 재촬영<br>
+        <span class="badge review">REVIEW</span> 담당자 확인 &nbsp;
+        <span class="badge invalid">INVALID</span> 문서 불일치
+      </p>
+    </div>
+    <div class="card">
+      <h4>Input Conditions</h4>
+      <p>blur, crop, glare, downscale, compression, rotation, low contrast 등 9가지 열화 조건.</p>
+    </div>
+  </div>
+
+  <h2 style="margin-top:6mm;"><span class="num">2</span> 4-Gate Pipeline</h2>
+  <p class="subtitle">이미지 입력부터 최종 판정까지 4단계 Gate를 순차 통과합니다.</p>
+
+  <div class="pipeline">
+    <div class="pipe-step">
+      <div class="sl">Gate 1</div>
+      <h4>입력 유효성 검증</h4>
+      <p>이미지 읽기, 최소 크기(100px), 검은/흰 화면 비율 검사. 실패 시 OCR 스킵. blur·저해상도는 기록만 하고 통과.</p>
+      <div class="decs">
+        <span class="dec retake">retake</span>
+        <span class="dec next">다음 Gate</span>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="sl">OCR Extraction</div>
+      <h4>PaddleOCR 텍스트 추출</h4>
+      <p>전체 텍스트 추출 → 문서 유형별 규칙으로 구조화 필드 파싱. CTC decoder monkey-patch로 글자별 confidence 추출.</p>
+    </div>
+    <div class="pipe-step">
+      <div class="sl">Gate 2</div>
+      <h4>문서 유형 검증</h4>
+      <p>키워드("주민등록증", "통장", "은행" 등)로 유형 판별. 명확 불일치 → invalid. 애매 + 품질 문제 → retake. 애매 + 품질 정상 → VLM(Qwen3-VL) 분류.</p>
+      <div class="decs">
+        <span class="dec invalid">invalid</span>
+        <span class="dec retake">retake</span>
+        <span class="dec next">다음 Gate</span>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="sl">Gate 3</div>
+      <h4>필수 정보 존재 검증</h4>
+      <p>신분증: name, id_number, address, issue_date / 통장: name, account_number, bank_name. 일부 문제 시 VLM reread 보완 시도.</p>
+      <div class="decs">
+        <span class="dec retake">retake</span>
+        <span class="dec review">review</span>
+        <span class="dec next">다음 Gate</span>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="sl">Gate 4</div>
+      <h4>형식 검증 + Confidence</h4>
+      <p>필드별 confidence 임계값(핵심 0.7, 이름 0.6, 보조 0.5) + 글자별 confidence(0.5 미만 지적) + 주민번호 형식 검증.</p>
+      <div class="decs">
+        <span class="dec review">review</span>
+        <span class="dec pass">pass</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>OCRGate — Financial Document Review System</span>
+    <span>2 / 6</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAGE 3: ARCHITECTURE + UI -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="page">
+  <h2><span class="num">3</span> System Architecture</h2>
+  <p class="subtitle">FastAPI + Streamlit 기반 서비스 구조와 SSE 스트리밍 2단계 응답</p>
+
+  <div class="arch-grid">
+    <div class="arch-box">
+      <div class="icon">🖥️</div>
+      <h4>Streamlit UI</h4>
+      <p>문서 업로드, 실시간 진행 표시,<br>결과 시각화 및 필드 수정</p>
+    </div>
+    <div class="arch-box">
+      <div class="icon">⚡</div>
+      <h4>FastAPI Backend</h4>
+      <p>SSE 스트리밍 엔드포인트<br>OCR 즉시 → VLM 보완 순차 전송</p>
+    </div>
+    <div class="arch-box">
+      <div class="icon">🧠</div>
+      <h4>Rule Engine</h4>
+      <p>4-Gate 파이프라인 실행<br>품질·OCR·VLM 신호 종합 판정</p>
+    </div>
+    <div class="arch-box">
+      <div class="icon">📝</div>
+      <h4>PaddleOCR</h4>
+      <p>한국어 OCR 엔진<br>글자별 confidence 추출</p>
+    </div>
+    <div class="arch-box">
+      <div class="icon">👁️</div>
+      <h4>Qwen3-VL (4B)</h4>
+      <p>문서 유형 분류 + 필드 reread<br>OCR 실패 시 보조 판독</p>
+    </div>
+    <div class="arch-box">
+      <div class="icon">🔍</div>
+      <h4>Quality Service</h4>
+      <p>Laplacian blur score<br>해상도 검사, 이미지 유효성</p>
+    </div>
+  </div>
+
+  <div class="hl" style="margin-top:3mm;">
+    <strong>2단계 SSE 스트리밍:</strong> Phase 1에서 OCR 결과를 즉시 표시 → Phase 2에서 VLM 보완 결과를 후속 전송. 정상 문서는 VLM 없이 빠르게 pass.
+  </div>
+
+  <h2 style="margin-top:6mm;"><span class="num">4</span> User Interface</h2>
+  <p class="subtitle">3-column 레이아웃. 판정별 색상 코딩과 글자별 confidence 시각화.</p>
+
+  <!-- PASS mockup -->
+  <div class="ui-mock" style="margin-bottom:3mm;">
+    <div class="ui-mock-header">
+      <div class="dot" style="background:#ff5f57;"></div>
+      <div class="dot" style="background:#ffbd2e;"></div>
+      <div class="dot" style="background:#28c840;"></div>
+      <span>OCRGate</span>
+      <span style="font-weight:400;color:var(--gray);font-size:6pt;margin-left:1mm;">신분증 · 통장사본 자동 검증</span>
+    </div>
+    <div class="ui-mock-body">
+      <div class="ui-col">
+        <h5>이미지</h5>
+        <div class="ui-img-ph">📄 신분증 이미지</div>
+        <div style="font-size:5.5pt;color:var(--gray);margin-top:1mm;">선명도 <b>2519</b> · 해상도 <b>정상</b></div>
+      </div>
+      <div class="ui-col">
+        <h5>판정</h5>
+        <div class="ui-strip" style="background:#f0fdf4;border:0.5px solid #86efac;">
+          <span class="badge pass">PASS</span>
+          <span style="font-size:6.5pt;color:var(--pass);">문서가 정상적으로 확인되었습니다.</span>
+        </div>
+        <div style="font-size:6pt;color:var(--gray);padding:1mm 0;font-family:monospace;">
+          주민등록증 홍길순 820701-2345678<br>행복특별시 행복한구 행복로 1길 ...
+        </div>
+      </div>
+      <div class="ui-col">
+        <h5>추출 정보</h5>
+        <div class="ui-field"><span class="fl">이름</span><span class="fv">홍길순</span><span class="fc h">95%</span></div>
+        <div class="ui-field"><span class="fl">주민번호</span><span class="fv">820701-2345678</span><span class="fc h">97%</span></div>
+        <div class="ui-field"><span class="fl">주소</span><span class="fv">행복특별시 행복한구...</span><span class="fc h">92%</span></div>
+        <div class="ui-field"><span class="fl">발급일</span><span class="fv">2019.03.01</span><span class="fc h">91%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVIEW mockup -->
+  <div class="ui-mock">
+    <div class="ui-mock-header">
+      <div class="dot" style="background:#ff5f57;"></div>
+      <div class="dot" style="background:#ffbd2e;"></div>
+      <div class="dot" style="background:#28c840;"></div>
+      <span>OCRGate</span>
+    </div>
+    <div class="ui-mock-body">
+      <div class="ui-col">
+        <h5>이미지</h5>
+        <div class="ui-img-ph" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);">📄 통장사본 (blur)</div>
+      </div>
+      <div class="ui-col">
+        <h5>판정</h5>
+        <div class="ui-strip" style="background:#fffbeb;border:0.5px solid #fcd34d;">
+          <span class="badge review">REVIEW</span>
+          <span style="font-size:6.5pt;color:var(--review);">담당자 확인 필요</span>
+        </div>
+        <div class="ui-reason" style="background:#fffbeb;border:0.5px solid #fcd34d;color:#92400e;">
+          · 계좌번호 일부 글자 신뢰도 낮음<br>
+          · 은행명 인식 신뢰도가 낮습니다
+        </div>
+      </div>
+      <div class="ui-col">
+        <h5>정보 수정</h5>
+        <div class="ui-field" style="border:0.5px solid var(--review);"><span class="fl">예금주</span><span class="fv">홍길동</span><span class="fc m">72%</span></div>
+        <div class="ui-field" style="border:0.5px solid var(--retake);"><span class="fl">계좌번호</span><span class="fv">123-456-<span style="background:var(--retake);color:white;padding:0 1px;border-radius:1px;font-size:6.5pt;">7</span>890</span><span class="fc l">58%</span></div>
+        <div class="ui-field" style="border:0.5px solid var(--review);"><span class="fl">은행명</span><span class="fv">우리은행</span><span class="fc m">65%</span></div>
+        <div style="margin-top:1.5mm;padding:1.5mm;background:var(--primary);color:white;border-radius:3px;text-align:center;font-size:7pt;font-weight:600;">확인 완료</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>OCRGate — Financial Document Review System</span>
+    <span>3 / 6</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAGE 4: VLM STRATEGY + EVALUATION -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="page">
+  <h2><span class="num">5</span> VLM Reread Strategy</h2>
+  <p class="subtitle">OCR 실패/저신뢰 필드에 대해 VLM을 보조적으로 활용하는 보완 전략</p>
+
+  <table>
+    <thead>
+      <tr><th>Field Type</th><th>Situation</th><th>VLM Action</th><th>Result</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Text</strong> <span style="font-size:6pt;color:var(--gray);">(name, bank_name, address, issue_date)</span></td>
+        <td>Missing</td>
+        <td>VLM 값으로 보완 (conf 0.8)</td>
+        <td><span class="badge pass">pass 가능</span></td>
+      </tr>
+      <tr>
+        <td><strong>Text</strong></td>
+        <td>Low confidence</td>
+        <td>일치 시 승격, 불일치 시 VLM 값으로 대체 (conf 0.6)</td>
+        <td><span class="badge pass">pass 가능</span></td>
+      </tr>
+      <tr>
+        <td><strong>Numeric</strong> <span style="font-size:6pt;color:var(--gray);">(id_number, account_number)</span></td>
+        <td>Missing</td>
+        <td>VLM 값 넣되 low conf 유지</td>
+        <td><span class="badge review">review 유지</span></td>
+      </tr>
+      <tr>
+        <td><strong>Numeric</strong></td>
+        <td>Low confidence</td>
+        <td>OCR-VLM 정확 일치 시에만 승격</td>
+        <td><span class="badge review">불일치 시 review</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="hl">
+    <strong>핵심 원칙:</strong> VLM에게 "불확실하면 unknown" 강제. 숫자 필드는 OCR-VLM 정확 일치 시에만 승격. 틀린 값의 자신감이 가장 위험하다.
+  </div>
+
+  <h2 style="margin-top:6mm;"><span class="num">6</span> Evaluation Framework</h2>
+  <p class="subtitle">Ground truth 라벨링 기반 정량 평가 체계</p>
+
+  <div class="stat-row">
+    <div class="stat"><div class="n">77</div><div class="l">Total Samples</div></div>
+    <div class="stat"><div class="n">9</div><div class="l">Degradation Types</div></div>
+    <div class="stat"><div class="n">7</div><div class="l">Metrics</div></div>
+    <div class="stat"><div class="n">4</div><div class="l">Decision Classes</div></div>
+  </div>
+
+  <h3>Sample Generation</h3>
+  <p style="font-size:7.5pt;color:var(--gray);margin-bottom:2mm;">valid 7장(신분증 3, 통장 4)에서 9가지 변형을 자동 생성.</p>
+
+  <table>
+    <thead><tr><th>Degradation</th><th>Method</th><th>Expected</th></tr></thead>
+    <tbody>
+      <tr><td>Crop Top / Bottom / Left</td><td>각 방향 40% 제거</td><td><span class="badge retake">retake</span></td></tr>
+      <tr><td>Gaussian Blur</td><td>ksize=31 가우시안 블러</td><td><span class="badge retake">retake</span></td></tr>
+      <tr><td>Downscale</td><td>1/4 축소 → 원본 복원</td><td><span class="badge retake">retake</span></td></tr>
+      <tr><td>JPEG Compression</td><td>quality=5 압축</td><td><span class="badge review">review</span></td></tr>
+      <tr><td>Glare Overlay</td><td>중앙 원형 글레어 합성</td><td><span class="badge review">review</span></td></tr>
+      <tr><td>Rotation</td><td>15도 회전</td><td><span class="badge review">review</span></td></tr>
+      <tr><td>Low Contrast</td><td>대비 30%로 감소</td><td><span class="badge pass">pass</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:4mm;">Evaluation Metrics</h3>
+  <table>
+    <thead><tr><th>Metric</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Decision Distribution</strong></td><td>pass / review / retake / invalid 비율</td></tr>
+      <tr><td><strong>Latency by Path</strong></td><td>OCR only vs VLM called 경로별 응답 시간</td></tr>
+      <tr><td><strong>VLM Call Rate</strong></td><td>VLM 호출 비율 및 decision별 분포</td></tr>
+      <tr><td><strong>Failure Mode Analysis</strong></td><td>retake/review 사유별 빈도와 해당 파일</td></tr>
+      <tr><td><strong>Per-folder Summary</strong></td><td>변형 유형별 decision 분포</td></tr>
+      <tr><td><strong>Safe Pass Rate</strong></td><td>(pass AND 핵심 필드 GT 일치) / 전체 pass</td></tr>
+      <tr><td><strong>VLM Effect</strong></td><td>VLM 유무에 따른 decision 변화 비교</td></tr>
+    </tbody>
+  </table>
+
+  <div class="hl" style="margin-top:3mm;">
+    <strong>Safe Pass Rate</strong> = pass이면서 핵심 필드가 정확한 비율. pass를 많이 하면서도 safe rate가 높아야 좋은 시스템.
+  </div>
+
+  <div class="page-footer">
+    <span>OCRGate — Financial Document Review System</span>
+    <span>4 / 6</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAGE 5: DESIGN PRINCIPLES -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="page">
+  <h2><span class="num">7</span> Design Principles</h2>
+  <p class="subtitle">시스템 설계의 핵심 원칙</p>
+
+  <div class="pr-grid">
+    <div class="pr">
+      <span class="icon">🎯</span>
+      <h4>Decision under Imperfect Input</h4>
+      <p>"이 입력으로 판정이 가능한가?"를 묻습니다. 입력 품질 실패(retake)와 의미적 불확실성(review)을 명확히 분리합니다.</p>
+    </div>
+    <div class="pr">
+      <span class="icon">🛡️</span>
+      <h4>Conservative Numeric, Flexible Text</h4>
+      <p>주민번호·계좌번호는 OCR-VLM 정확 일치 시에만 pass. 이름·은행명은 VLM 보완으로 유연하게 처리합니다.</p>
+    </div>
+    <div class="pr">
+      <span class="icon">🔗</span>
+      <h4>VLM as Secondary Signal</h4>
+      <p>VLM은 단독 판정자가 아닌 보조 신호. invalid_doc_type 판정에는 반대 타입의 strong OCR signal이 반드시 필요합니다.</p>
+    </div>
+    <div class="pr">
+      <span class="icon">⚡</span>
+      <h4>Fast Path First</h4>
+      <p>OCR 결과를 SSE로 즉시 전송, VLM은 필요 시에만 후속 호출. 정상 문서는 VLM 없이 빠르게 pass 판정.</p>
+    </div>
+    <div class="pr">
+      <span class="icon">🚪</span>
+      <h4>Early Exit Gates</h4>
+      <p>Gate 1 실패 시 OCR 스킵. 각 Gate에서 결정이 나면 후속 단계를 실행하지 않아 불필요한 연산을 방지합니다.</p>
+    </div>
+    <div class="pr">
+      <span class="icon">🔬</span>
+      <h4>Character-level Confidence</h4>
+      <p>라인 평균이 높아도 특정 글자 confidence가 낮으면 review. CTC decoder monkey-patch로 글자별 신뢰도를 추출합니다.</p>
+    </div>
+  </div>
+
+  <h2 style="margin-top:8mm;"><span class="num">8</span> Decision Rules Summary</h2>
+  <p class="subtitle">Gate별 조건과 Decision 매핑</p>
+
+  <table>
+    <thead><tr><th>Gate</th><th>Condition</th><th>Decision</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>이미지 읽기 불가 / 너무 작음 / 검은·흰 화면</td><td><span class="badge retake">retake</span></td></tr>
+      <tr><td>2</td><td>명확한 문서 유형 불일치 (OCR 키워드)</td><td><span class="badge invalid">invalid</span></td></tr>
+      <tr><td>2</td><td>키워드 없음 + 품질 문제 (blur/저해상도)</td><td><span class="badge retake">retake</span></td></tr>
+      <tr><td>2</td><td>VLM mismatch + strong OCR signal</td><td><span class="badge invalid">invalid</span></td></tr>
+      <tr><td>2</td><td>VLM mismatch/unknown + 필드 없음</td><td><span class="badge retake">retake</span></td></tr>
+      <tr><td>3</td><td>필수 필드 전부 없음</td><td><span class="badge retake">retake</span></td></tr>
+      <tr><td>3</td><td>일부 문제 → VLM reread 보완 → 재평가</td><td><span class="badge pass">pass</span> or <span class="badge review">review</span></td></tr>
+      <tr><td>4</td><td>형식 불일치 / confidence 낮음 / 글자별 low conf</td><td><span class="badge review">review</span></td></tr>
+      <tr><td>—</td><td>전부 통과</td><td><span class="badge pass">pass</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 style="margin-top:8mm;"><span class="num">9</span> Required Fields</h2>
+
+  <div class="card-grid c2">
+    <div class="card">
+      <h4>신분증 (ID Card)</h4>
+      <table style="margin:0;">
+        <tbody>
+          <tr><td><strong>name</strong></td><td>이름</td><td>conf ≥ 0.6</td></tr>
+          <tr><td><strong>id_number</strong></td><td>주민등록번호</td><td>conf ≥ 0.7 + 형식 검증</td></tr>
+          <tr><td><strong>address</strong></td><td>주소</td><td>conf ≥ 0.5</td></tr>
+          <tr><td><strong>issue_date</strong></td><td>발급일</td><td>conf ≥ 0.5</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h4>통장사본 (Bank Account)</h4>
+      <table style="margin:0;">
+        <tbody>
+          <tr><td><strong>name</strong></td><td>예금주</td><td>conf ≥ 0.6</td></tr>
+          <tr><td><strong>account_number</strong></td><td>계좌번호</td><td>conf ≥ 0.7</td></tr>
+          <tr><td><strong>bank_name</strong></td><td>은행명</td><td>conf ≥ 0.5</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>OCRGate — Financial Document Review System</span>
+    <span>5 / 6</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PAGE 6: LIMITATIONS + TECH -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="page">
+  <h2><span class="num">10</span> Known Limitations</h2>
+  <p class="subtitle">MVP의 한계와 개선 방향</p>
+
+  <div class="card-grid c2">
+    <div class="card">
+      <h4>이름 추출 Heuristic</h4>
+      <p>bbox 없이 텍스트 순서 기반 추출. OCR line order가 깨지면 오인식 가능.<br><strong>→</strong> bbox 좌표 기반 후보 선택, 문서 타입별 필드 위치 템플릿.</p>
+    </div>
+    <div class="card">
+      <h4>은행명 매칭</h4>
+      <p>하드코딩된 은행명 리스트와 exact match. OCR 오인식 시 실패.<br><strong>→</strong> fuzzy matching, 은행명 리스트 외부 설정 분리.</p>
+    </div>
+    <div class="card">
+      <h4>Glare 감지 비활성</h4>
+      <p>흰색 배경과 실제 glare 구분 불가로 비활성화 상태.<br><strong>→</strong> gradient 기반 국소 밝기 변화 분석, 학습 기반 classifier.</p>
+    </div>
+    <div class="card">
+      <h4>향후 확장</h4>
+      <p>Rule-based → Learned decision model, adaptive threshold, 다국어 OCR, A/B testing framework.</p>
+    </div>
+  </div>
+
+  <h2 style="margin-top:8mm;"><span class="num">11</span> Tech Stack</h2>
+  <p class="subtitle">사용된 기술</p>
+
+  <div class="tech-grid">
+    <div class="tech"><div class="ti">🐍</div><div class="tn">Python 3.10+</div><div class="td">Core Language</div></div>
+    <div class="tech"><div class="ti">⚡</div><div class="tn">FastAPI</div><div class="td">REST API + SSE</div></div>
+    <div class="tech"><div class="ti">🖥️</div><div class="tn">Streamlit</div><div class="td">Web UI</div></div>
+    <div class="tech"><div class="ti">📝</div><div class="tn">PaddleOCR</div><div class="td">Korean OCR</div></div>
+    <div class="tech"><div class="ti">👁️</div><div class="tn">Qwen3-VL-4B</div><div class="td">Vision-Language Model</div></div>
+    <div class="tech"><div class="ti">📐</div><div class="tn">Pydantic</div><div class="td">Schema Validation</div></div>
+    <div class="tech"><div class="ti">🖼️</div><div class="tn">OpenCV</div><div class="td">Image Quality</div></div>
+    <div class="tech"><div class="ti">🤗</div><div class="tn">Transformers</div><div class="td">VLM Inference</div></div>
+  </div>
+
+  <h2 style="margin-top:8mm;"><span class="num">12</span> Project Structure</h2>
+
+  <div style="background:#1e293b;color:#e2e8f0;border-radius:6px;padding:3mm 4mm;font-family:'SF Mono',Consolas,monospace;font-size:7pt;line-height:1.8;">
+    <span style="color:#64748b;">financial-doc-review/</span><br>
+    ├── <span style="color:#7dd3fc;">app/</span><br>
+    │&nbsp;&nbsp; ├── main.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#64748b;"># FastAPI entrypoint</span><br>
+    │&nbsp;&nbsp; ├── ui.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#64748b;"># Streamlit UI</span><br>
+    │&nbsp;&nbsp; ├── <span style="color:#7dd3fc;">api/</span><br>
+    │&nbsp;&nbsp; │&nbsp;&nbsp; └── review.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#64748b;"># REST + SSE endpoints</span><br>
+    │&nbsp;&nbsp; ├── <span style="color:#7dd3fc;">schemas/</span><br>
+    │&nbsp;&nbsp; │&nbsp;&nbsp; ├── decision.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#64748b;"># Decision, DocumentReviewResponse</span><br>
+    │&nbsp;&nbsp; │&nbsp;&nbsp; ├── document.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#64748b;"># DocumentType enum</span><br>
+    │&nbsp;&nbsp; │&nbsp;&nbsp; ├── ocr.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#64748b;"># OCRField, OCRResult</span><br>
+    │&nbsp;&nbsp; │&nbsp;&nbsp; └── quality.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#64748b;"># ImageQualityResult</span><br>
+    │&nbsp;&nbsp; └── <span style="color:#7dd3fc;">services/</span><br>
+    │&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ├── ocr_service.py&nbsp;&nbsp;<span style="color:#64748b;"># PaddleOCR + field extraction</span><br>
+    │&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ├── quality_service.py <span style="color:#64748b;"># blur, resolution check</span><br>
+    │&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ├── rule_engine.py&nbsp;&nbsp;<span style="color:#64748b;"># 4-Gate pipeline</span><br>
+    │&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; └── vlm_service.py&nbsp;&nbsp;<span style="color:#64748b;"># Qwen3-VL inference</span><br>
+    ├── <span style="color:#7dd3fc;">scripts/</span><br>
+    │&nbsp;&nbsp; ├── generate_samples.py&nbsp;<span style="color:#64748b;"># 9종 변형 생성</span><br>
+    │&nbsp;&nbsp; ├── eval_samples.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#64748b;"># 전체 샘플 평가</span><br>
+    │&nbsp;&nbsp; ├── perf_test.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#64748b;"># 7개 metric 성능 평가</span><br>
+    │&nbsp;&nbsp; └── labeling_ui.py&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#64748b;"># GT 라벨링 Gradio UI</span><br>
+    └── <span style="color:#7dd3fc;">samples/</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp; ├── valid/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#64748b;"># 원본 이미지</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp; ├── blur/ crop_top/ ...&nbsp;<span style="color:#64748b;"># 변형 이미지 (9 폴더)</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp; └── ground_truth.json&nbsp;&nbsp;&nbsp;<span style="color:#64748b;"># GT 라벨</span>
+  </div>
+
+  <div class="page-footer">
+    <span>OCRGate — Financial Document Review System</span>
+    <span>6 / 6</span>
+  </div>
+</div>
+
+</body>
+</html>
