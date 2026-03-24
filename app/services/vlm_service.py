@@ -18,10 +18,11 @@ def _load_model():
 
         _processor = AutoProcessor.from_pretrained(model_dir)
         import torch
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
         _model = AutoModelForImageTextToText.from_pretrained(
             model_dir,
-            torch_dtype=torch.bfloat16,
-            device_map={"": "cuda:5"},
+            torch_dtype=torch.bfloat16 if device != "cpu" else torch.float32,
+            device_map={"": device},
         )
     return _model, _processor
 

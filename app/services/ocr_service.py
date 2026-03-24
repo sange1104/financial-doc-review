@@ -54,8 +54,7 @@ ISSUE_DATE_PATTERN = re.compile(r"(\d{4})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,
 
 
 def _run_ocr(image_path: str) -> tuple[list[str], list[float], dict[str, list[tuple[str, float]]]]:
-    """PaddleOCR 실행 후 (texts, scores, char_confs_map) 반환.
-    char_confs_map: text -> [(char, confidence), ...] 매핑."""
+    """PaddleOCR 실행 후 (texts, scores, char_confs_map) 반환."""
     with _ocr_lock:
         ocr = PaddleOCR(use_textline_orientation=True, lang="korean")
         post = ocr.paddlex_pipeline.text_rec_model.post_op

@@ -117,6 +117,11 @@ def _gate2_document_type(ocr: OCRResult, expected_type: DocumentType, quality: I
     )
 
     if is_ambiguous:
+        # 키워드 없음 + 품질 문제 → 이미지 불량으로 retake
+        q_issues = _quality_issues(quality)
+        if q_issues:
+            reason = "; ".join(q_issues) + "; OCR could not identify document type"
+            return _response(expected_type, Decision.RETAKE, reason, quality, ocr)
         return _gate2_vlm_fallback(image_path, expected_type, quality, ocr, on_progress=on_progress)
 
     return None
