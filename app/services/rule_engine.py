@@ -149,7 +149,7 @@ def _gate2_vlm_fallback(image_path: str, expected_type: DocumentType, quality: I
     from app.services.vlm_service import classify_document_type
 
     _notify = on_progress or (lambda msg: None)
-    _notify("🤖 VLM으로 문서를 분석하고 있습니다...")
+    _notify("🔎 VLM으로 문서를 분석하고 있습니다...")
 
     raw_len = len(ocr.raw_text or "")
     vlm_type, vlm_desc = classify_document_type(image_path)
@@ -387,7 +387,7 @@ def _apply_vlm_reread(
     from app.services.vlm_service import reread_fields
 
     _notify = on_progress or (lambda msg: None)
-    _notify("🤖 VLM으로 누락/불확실 필드를 다시 읽고 있습니다...")
+    _notify("🔎 VLM으로 누락/불확실 필드를 다시 읽고 있습니다...")
 
     vlm_results = reread_fields(image_path, problem_fields)
 
@@ -516,6 +516,13 @@ def evaluate_bank_account(image_path: str, on_progress=None) -> DocumentReviewRe
             problems = _collect_problem_fields(ocr, BANK_REQUIRED_FIELDS)
             if problems:
                 ocr = _apply_vlm_reread(ocr, image_path, problems, on_progress=on_progress)
+                # VLM reread 후에도 계좌번호 없으면 retake
+                if not _get_field(ocr, "account_number"):
+                    return _response(
+                        DocumentType.BANK_ACCOUNT_DOC, Decision.RETAKE,
+                        "account_number not found after OCR + VLM reread",
+                        quality, ocr,
+                    )
                 # Gate 3 재평가
                 result2 = _gate3_required_fields_bank(ocr, quality)
                 if result2:

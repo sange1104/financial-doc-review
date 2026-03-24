@@ -76,9 +76,18 @@ def _run_ocr(image_path: str) -> tuple[list[str], list[float], dict[str, list[tu
     return texts, scores, char_confs_map
 
 
-def _get_char_confs(text: str, char_confs_map: dict) -> list[CharConfidence]:
-    """텍스트에 해당하는 글자별 confidence를 CharConfidence 리스트로 반환."""
+def _get_char_confs(text: str, char_confs_map: dict, value: str | None = None) -> list[CharConfidence]:
+    """텍스트에 해당하는 글자별 confidence를 CharConfidence 리스트로 반환.
+    value가 지정되면 해당 value에 매칭되는 부분만 추출."""
     cc = char_confs_map.get(text, [])
+    if not cc:
+        return []
+    if value and value != text:
+        # value가 원본 text의 부분인 경우, 해당 위치의 char_confs만 추출
+        full_text = "".join(ch for ch, _ in cc)
+        start = full_text.find(value)
+        if start >= 0:
+            cc = cc[start:start + len(value)]
     return [CharConfidence(char=ch, confidence=conf) for ch, conf in cc]
 
 
@@ -106,7 +115,7 @@ def extract_id_card(image_path: str) -> OCRResult:
         id_match = ID_NUMBER_PATTERN.search(text)
         if id_match and not has_id_number:
             fields.append(OCRField(field_name="id_number", value=id_match.group(), confidence=score,
-                                   char_confidences=_get_char_confs(text, char_confs_map)))
+                                   char_confidences=_get_char_confs(text, char_confs_map, id_match.group())))
             has_id_number = True
             continue
 
@@ -182,7 +191,7 @@ def extract_bank_account(image_path: str) -> OCRResult:
                 acct_match = ACCOUNT_NUMBER_PATTERN.search(text)
                 if acct_match:
                     fields.append(OCRField(field_name="account_number", value=acct_match.group(), confidence=score,
-                                           char_confidences=_get_char_confs(text, char_confs_map)))
+                                           char_confidences=_get_char_confs(text, char_confs_map, acct_match.group())))
                     has_account = True
                     continue
                 if i + 1 < len(texts):
