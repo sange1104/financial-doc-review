@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 \
     && rm -rf /var/lib/apt/lists/*
 
+# Upgrade pip first (Ubuntu 22.04 ships pip 22.x which can't parse PaddlePaddle index)
+RUN pip install --upgrade pip
+
 # Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir \
