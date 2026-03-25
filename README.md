@@ -3,7 +3,7 @@
 OCR + Rule Engine + VLM fallback 기반 금융 문서 자동 검수 서비스.
 신분증 / 통장사본 이미지에 대해 **pass / review / retake / invalid_doc_type** 판정을 제공합니다.
 
-> 📄 [Portfolio]([portfolio/index.html](https://sange1104.github.io/financial-doc-review/portfolio/index.html))
+> 📄 [Portfolio](https://sange1104.github.io/financial-doc-review/portfolio/index.html)
 
 ### 문제 정의
 
