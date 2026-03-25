@@ -1,15 +1,17 @@
-### OCRGate
+# OCRGate
 
 OCR + Rule Engine + VLM fallback 기반 금융 문서 자동 검수 서비스.
 신분증 / 통장사본 이미지에 대해 **pass / review / retake / invalid_doc_type** 판정을 제공합니다.
 
-> 📄 [Portfolio](https://sange1104.github.io/financial-doc-review/portfolio/index.html)
+> 📄 [Report](https://sange1104.github.io/financial-doc-review/portfolio/index.html)
+
 
 ### 문제 정의
 
 - 단순 OCR만으로는 blur, crop, glare 등 품질 저하 이미지에서 오검출/누락이 발생합니다.
 - VLM은 정확도 보완에 유리하지만 latency와 cost가 큽니다.
 - 따라서 **OCR-first + selective VLM fallback** 구조를 설계했습니다. 대부분의 요청은 OCR만으로 빠르게 처리하고, 애매한 케이스에만 VLM을 호출합니다.
+
 
 ### 주요 기능
 
