@@ -344,7 +344,7 @@ for mk in sorted(model_comparison):
     print(f"| {mk} | {mc['safe']} | {st_val} | {rate:.1f}% |")
 
 # 기본 모델로 복원
-set_model("4B")
+set_model("2B")
 
 # ── Save results ──
 from datetime import datetime

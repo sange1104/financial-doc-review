@@ -2,7 +2,7 @@ from transformers import AutoModelForImageTextToText, AutoProcessor
 from qwen_vl_utils import process_vision_info
 
 VLM_BASE = "/sdc/vissent/huggingface/hub"
-DEFAULT_MODEL = "Qwen3-VL-4B-Instruct"
+DEFAULT_MODEL = "Qwen3-VL-2B-Instruct"
 
 AVAILABLE_MODELS = {
     "2B": f"{VLM_BASE}/models--Qwen--Qwen3-VL-2B-Instruct/snapshots",
@@ -18,7 +18,7 @@ _current_model_key = None
 def _load_model(model_key: str | None = None):
     global _model, _processor, _current_model_key
     if model_key is None:
-        model_key = "4B"
+        model_key = "2B"
 
     if _model is not None and _current_model_key == model_key:
         return _model, _processor
