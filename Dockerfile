@@ -20,10 +20,14 @@ RUN pip install --upgrade pip
 COPY requirements.txt .
 RUN pip install --no-cache-dir \
     torch==2.4.1+cu118 torchvision==0.19.1+cu118 --index-url https://download.pytorch.org/whl/cu118 \
-    && pip install --no-cache-dir \
-    paddlepaddle-gpu==3.0.0 -f https://www.paddlepaddle.org.cn/whl/linux/cudnn/stable.html \
     && pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir transformers==5.3.0 qwen-vl-utils accelerate
+
+# Install paddlepaddle-gpu 3.0.0 from local wheel (not available on PyPI)
+COPY paddle_gpu_3.0.0.tar.gz /tmp/paddle_gpu_3.0.0.tar.gz
+RUN mkdir -p /tmp/paddle_gpu && tar xzf /tmp/paddle_gpu_3.0.0.tar.gz -C /usr/local/lib/python3.10/dist-packages/ \
+    && pip install --no-cache-dir opt_einsum httpx astor networkx decorator \
+    && rm -rf /tmp/paddle_gpu_3.0.0.tar.gz /tmp/paddle_gpu
 
 # App code
 COPY app/ app/
