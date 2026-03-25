@@ -1,30 +1,60 @@
 from transformers import AutoModelForImageTextToText, AutoProcessor
 from qwen_vl_utils import process_vision_info
 
-MODEL_PATH = "/sdc/vissent/huggingface/hub/models--Qwen--Qwen3-VL-4B-Instruct/snapshots"
+VLM_BASE = "/sdc/vissent/huggingface/hub"
+DEFAULT_MODEL = "Qwen3-VL-4B-Instruct"
+
+AVAILABLE_MODELS = {
+    "2B": f"{VLM_BASE}/models--Qwen--Qwen3-VL-2B-Instruct/snapshots",
+    "4B": f"{VLM_BASE}/models--Qwen--Qwen3-VL-4B-Instruct/snapshots",
+    "8B": f"{VLM_BASE}/models--Qwen--Qwen3-VL-8B-Instruct/snapshots",
+}
 
 _model = None
 _processor = None
+_current_model_key = None
 
 
-def _load_model():
-    global _model, _processor
-    if _model is None:
-        import glob
-        import os
-        # snapshot 디렉토리 찾기
-        snapshots = glob.glob(os.path.join(MODEL_PATH, "*"))
-        model_dir = snapshots[0] if snapshots else MODEL_PATH
+def _load_model(model_key: str | None = None):
+    global _model, _processor, _current_model_key
+    if model_key is None:
+        model_key = "4B"
 
-        _processor = AutoProcessor.from_pretrained(model_dir)
+    if _model is not None and _current_model_key == model_key:
+        return _model, _processor
+
+    # 기존 모델 해제
+    if _model is not None:
+        import gc
         import torch
-        device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        _model = AutoModelForImageTextToText.from_pretrained(
-            model_dir,
-            torch_dtype=torch.bfloat16 if device != "cpu" else torch.float32,
-            device_map={"": device},
-        )
+        del _model, _processor
+        _model = None
+        _processor = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    import glob
+    import os
+    model_path = AVAILABLE_MODELS.get(model_key, AVAILABLE_MODELS["4B"])
+    snapshots = glob.glob(os.path.join(model_path, "*"))
+    model_dir = snapshots[0] if snapshots else model_path
+
+    _processor = AutoProcessor.from_pretrained(model_dir)
+    import torch
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    _model = AutoModelForImageTextToText.from_pretrained(
+        model_dir,
+        torch_dtype=torch.bfloat16 if device != "cpu" else torch.float32,
+        device_map={"": device},
+    )
+    _current_model_key = model_key
     return _model, _processor
+
+
+def set_model(model_key: str):
+    """VLM 모델 변경. "2B", "4B", "8B" 중 선택."""
+    _load_model(model_key)
 
 
 def classify_document_type(image_path: str) -> tuple[str, str]:

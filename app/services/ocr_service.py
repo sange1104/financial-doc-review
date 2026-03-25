@@ -120,8 +120,8 @@ def extract_id_card(image_path: str) -> OCRResult:
             continue
 
         if has_doc_title and not has_name and score >= 0.8:
-            fields.append(OCRField(field_name="name", value=text, confidence=score,
-                                   char_confidences=_get_char_confs(text, char_confs_map)))
+            fields.append(OCRField(field_name="name", value=text.replace(" ", ""), confidence=score,
+                                   char_confidences=_get_char_confs(text, char_confs_map, text.replace(" ", ""))))
             has_name = True
             continue
 
@@ -204,12 +204,50 @@ def extract_bank_account(image_path: str) -> OCRResult:
                         has_account = True
                 continue
 
-    # name: 후보 추출 + 점수화
-    name_field = _score_name_candidates(texts, scores, raw_lines, char_confs_map)
+    # name: "님" 패턴 우선 탐색 → 없으면 후보 점수화
+    name_field = _extract_name_by_nim(texts, scores, char_confs_map)
+    if not name_field:
+        name_field = _score_name_candidates(texts, scores, raw_lines, char_confs_map)
     if name_field:
         fields.append(name_field)
 
     return OCRResult(fields=fields, raw_text="\n".join(raw_lines) if raw_lines else None)
+
+
+def _extract_name_by_nim(
+    texts: list[str], scores: list[float], char_confs_map: dict | None = None,
+) -> OCRField | None:
+    """통장사본에서 '님' 패턴으로 이름을 추출한다.
+
+    패턴:
+    1. "홍길동 님" 또는 "홍길동님" → 같은 줄에서 추출
+    2. "홍길동" + 다음 줄 "님" → 앞 줄이 이름
+    """
+    for i, (text, conf) in enumerate(zip(texts, scores)):
+        text = text.strip()
+        if not text:
+            continue
+
+        # 패턴 1: 같은 줄에 "님" 포함 (예: "홍길동 님", "홍길동님")
+        if "님" in text:
+            name = text.replace("님", "").strip().replace(" ", "")
+            if name and KOREAN_NAME_PATTERN.match(name):
+                return OCRField(
+                    field_name="name", value=name, confidence=conf,
+                    char_confidences=_get_char_confs(text, char_confs_map or {}, name),
+                )
+
+        # 패턴 2: 이 줄이 한글 이름이고 다음 줄이 "님"
+        if i + 1 < len(texts):
+            next_text = texts[i + 1].strip()
+            if next_text == "님" and KOREAN_NAME_PATTERN.match(text.replace(" ", "")):
+                name = text.replace(" ", "")
+                return OCRField(
+                    field_name="name", value=name, confidence=conf,
+                    char_confidences=_get_char_confs(text, char_confs_map or {}, name),
+                )
+
+    return None
 
 
 def _score_name_candidates(
@@ -278,5 +316,6 @@ def _score_name_candidates(
 
     # 최고 점수 후보 선택
     best = max(candidates, key=lambda x: x[2])
-    cc = _get_char_confs(best[0], char_confs_map or {})
-    return OCRField(field_name="name", value=best[0], confidence=best[1], char_confidences=cc)
+    name_val = best[0].replace(" ", "")
+    cc = _get_char_confs(best[0], char_confs_map or {}, name_val)
+    return OCRField(field_name="name", value=name_val, confidence=best[1], char_confidences=cc)

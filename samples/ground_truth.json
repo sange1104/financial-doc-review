@@ -49,7 +49,7 @@
     "doc_type": "id_card",
     "decision": "retake",
     "fields": {
-      "name": "시민 존",
+      "name": "시민존",
       "id_number": "000000-0000000",
       "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
       "issue_date": "0000.0.00."
@@ -115,7 +115,7 @@
     "doc_type": "id_card",
     "decision": "review",
     "fields": {
-      "name": "시민 존",
+      "name": "시민존",
       "id_number": "000000-0000000",
       "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
       "issue_date": "0000.0.00."
@@ -181,7 +181,7 @@
     "doc_type": "id_card",
     "decision": "retake",
     "fields": {
-      "name": "시민 존",
+      "name": "시민존",
       "id_number": "000000-0000000",
       "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
       "issue_date": "0000.0.00."
@@ -247,7 +247,7 @@
     "doc_type": "id_card",
     "decision": "retake",
     "fields": {
-      "name": "시민 존",
+      "name": "시민존",
       "id_number": "000000-0000000",
       "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
       "issue_date": "0000.0.00."
@@ -313,7 +313,7 @@
     "doc_type": "id_card",
     "decision": "retake",
     "fields": {
-      "name": "시민 존",
+      "name": "시민존",
       "id_number": "000000-0000000",
       "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
       "issue_date": "0000.0.00."
@@ -379,7 +379,7 @@
     "doc_type": "id_card",
     "decision": "retake",
     "fields": {
-      "name": "시민 존",
+      "name": "시민존",
       "id_number": "000000-0000000",
       "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
       "issue_date": "0000.0.00."
@@ -445,7 +445,7 @@
     "doc_type": "id_card",
     "decision": "retake",
     "fields": {
-      "name": "시민 존",
+      "name": "시민존",
       "id_number": "000000-0000000",
       "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
       "issue_date": "0000.0.00."
@@ -511,7 +511,7 @@
     "doc_type": "id_card",
     "decision": "retake",
     "fields": {
-      "name": "시민 존",
+      "name": "시민존",
       "id_number": "000000-0000000",
       "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
       "issue_date": "0000.0.00."
@@ -577,7 +577,7 @@
     "doc_type": "id_card",
     "decision": "pass",
     "fields": {
-      "name": "시민 존",
+      "name": "시민존",
       "id_number": "000000-0000000",
       "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
       "issue_date": "0000.0.00."
@@ -643,7 +643,7 @@
     "doc_type": "id_card",
     "decision": "pass",
     "fields": {
-      "name": "시민 존",
+      "name": "시민존",
       "id_number": "000000-0000000",
       "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
       "issue_date": "0000.0.00."
@@ -709,7 +709,7 @@
     "doc_type": "id_card",
     "decision": "pass",
     "fields": {
-      "name": "시민 존",
+      "name": "시민존",
       "id_number": "000000-0000000",
       "address": "서울특별시 관악구 국회단지5길 25 5층 (봉천동)",
       "issue_date": "0000.0.00."
