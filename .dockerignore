@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+.git
+.claude
+reports/
+portfolio/
+docs/
+tests/
+*.egg-info
+.env
