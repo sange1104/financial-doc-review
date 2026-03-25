@@ -3,6 +3,8 @@
 OCR + Rule Engine + VLM fallback 기반 금융 문서 자동 검수 서비스.
 신분증 / 통장사본 이미지에 대해 **pass / review / retake / invalid_doc_type** 판정을 제공합니다.
 
+> 📄 [Portfolio](portfolio/index.html)
+
 ## 문제 정의
 
 - 단순 OCR만으로는 blur, crop, glare 등 품질 저하 이미지에서 오검출/누락이 발생합니다.
@@ -68,6 +70,8 @@ financial-doc-review/
 │   └── labeling_ui.py           # Ground truth 라벨링 UI
 ├── samples/                     # valid + degradation + GT labels
 ├── reports/                     # 성능 평가 리포트
+├── portfolio/
+│   └── index.html               # 포트폴리오 (설계·평가·인사이트)
 ├── requirements.txt
 └── pyproject.toml
 ```
@@ -184,7 +188,7 @@ curl -X POST http://localhost:8001/api/review/id-card \
 | VLM 호출 비율 | 53.2% |
 | valid 이미지 pass | 6/7 |
 
-## 제한 사항
+## 추후 개선 사항
 
 - **이름 추출**: bbox 없이 텍스트 순서 기반 heuristic 사용. OCR line order가 깨지면 오인식 가능.
 - **은행명 매칭**: 하드코딩된 은행명 리스트와 exact match. OCR 오인식 시 매칭 실패.
