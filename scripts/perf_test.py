@@ -261,7 +261,7 @@ for nv, wv in zip(no_vlm_results, results):
 print("\n\n## 8. VLM Model Comparison\n")
 print("각 VLM 모델로 전체 샘플을 재평가합니다...\n")
 
-from app.services.vlm_service import set_model, AVAILABLE_MODELS
+from app.services.vlm_service import set_model, AVAILABLE_MODELS_LOCAL as AVAILABLE_MODELS
 
 # VLM이 호출되는 샘플만 추출 (효율)
 vlm_sample_paths = [(r["path"], r["doc_type"]) for r in results if r["vlm"]]

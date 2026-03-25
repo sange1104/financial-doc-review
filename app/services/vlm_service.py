@@ -1,18 +1,37 @@
+import os
+
 from transformers import AutoModelForImageTextToText, AutoProcessor
 from qwen_vl_utils import process_vision_info
 
-VLM_BASE = "/sdc/vissent/huggingface/hub"
-DEFAULT_MODEL = "Qwen3-VL-4B-Instruct"
+# 로컬 캐시가 있으면 로컬, 없으면 HuggingFace에서 다운로드
+VLM_BASE = os.environ.get("VLM_BASE", "/sdc/vissent/huggingface/hub")
 
-AVAILABLE_MODELS = {
+AVAILABLE_MODELS_LOCAL = {
     "2B": f"{VLM_BASE}/models--Qwen--Qwen3-VL-2B-Instruct/snapshots",
     "4B": f"{VLM_BASE}/models--Qwen--Qwen3-VL-4B-Instruct/snapshots",
     "8B": f"{VLM_BASE}/models--Qwen--Qwen3-VL-8B-Instruct/snapshots",
 }
 
+AVAILABLE_MODELS_HF = {
+    "2B": "Qwen/Qwen3-VL-2B-Instruct",
+    "4B": "Qwen/Qwen3-VL-4B-Instruct",
+    "8B": "Qwen/Qwen3-VL-8B-Instruct",
+}
+
 _model = None
 _processor = None
 _current_model_key = None
+
+
+def _resolve_model_path(model_key: str) -> str:
+    """로컬 snapshot이 있으면 로컬 경로, 없으면 HF model ID를 반환."""
+    import glob
+    local_path = AVAILABLE_MODELS_LOCAL.get(model_key, "")
+    if local_path and os.path.isdir(local_path):
+        snapshots = glob.glob(os.path.join(local_path, "*"))
+        if snapshots:
+            return snapshots[0]
+    return AVAILABLE_MODELS_HF[model_key]
 
 
 def _load_model(model_key: str | None = None):
@@ -34,11 +53,7 @@ def _load_model(model_key: str | None = None):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    import glob
-    import os
-    model_path = AVAILABLE_MODELS.get(model_key, AVAILABLE_MODELS["4B"])
-    snapshots = glob.glob(os.path.join(model_path, "*"))
-    model_dir = snapshots[0] if snapshots else model_path
+    model_dir = _resolve_model_path(model_key)
 
     _processor = AutoProcessor.from_pretrained(model_dir)
     import torch

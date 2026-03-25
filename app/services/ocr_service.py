@@ -204,10 +204,16 @@ def extract_bank_account(image_path: str) -> OCRResult:
                         has_account = True
                 continue
 
-    # name: "님" 패턴 우선 탐색 → 없으면 후보 점수화
+    # name: "님" 패턴 우선 탐색 → 없으면 후보 점수화 (low confidence)
     name_field = _extract_name_by_nim(texts, scores, char_confs_map)
     if not name_field:
         name_field = _score_name_candidates(texts, scores, raw_lines, char_confs_map)
+        # "님"/"예금주" 없이 추출된 name은 신뢰도 낮음 → review로 유도
+        if name_field:
+            has_nim = any("님" in t for t in texts)
+            has_label = any(kw in t for t in texts for kw in NAME_LABEL_KEYWORDS)
+            if not has_nim and not has_label:
+                name_field.confidence = min(name_field.confidence, 0.5)
     if name_field:
         fields.append(name_field)
 
