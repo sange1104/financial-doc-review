@@ -171,7 +171,14 @@ for r in pass_results:
         gt_val = gt["fields"].get(fname, "")
         ocr_val = r["extracted"].get(fname, "")
         field_accuracy[fname]["total"] += 1
-        if gt_val and ocr_val and gt_val.strip() == ocr_val.strip():
+        # name 필드는 공백 제거 후 비교
+        if fname == "name":
+            gt_cmp = gt_val.replace(" ", "").strip()
+            ocr_cmp = ocr_val.replace(" ", "").strip()
+        else:
+            gt_cmp = gt_val.strip()
+            ocr_cmp = ocr_val.strip()
+        if gt_cmp and ocr_cmp and gt_cmp == ocr_cmp:
             field_accuracy[fname]["correct"] += 1
         elif gt_val:
             all_correct = False
@@ -250,6 +257,95 @@ for nv, wv in zip(no_vlm_results, results):
         print(f"| {nv['path']} | {nv['decision']} | {wv['decision']} |")
         vlm_changed.append({"path": nv["path"], "without_vlm": nv["decision"], "with_vlm": wv["decision"]})
 
+# ── 8. VLM Model Comparison (2B vs 4B vs 8B) ──
+print("\n\n## 8. VLM Model Comparison\n")
+print("각 VLM 모델로 전체 샘플을 재평가합니다...\n")
+
+from app.services.vlm_service import set_model, AVAILABLE_MODELS
+
+# VLM이 호출되는 샘플만 추출 (효율)
+vlm_sample_paths = [(r["path"], r["doc_type"]) for r in results if r["vlm"]]
+print(f"VLM 호출 대상: {len(vlm_sample_paths)}건\n")
+
+model_comparison = {}
+for model_key in sorted(AVAILABLE_MODELS.keys()):
+    print(f"--- {model_key} 모델 로딩 ---")
+    set_model(model_key)
+
+    model_results = {"decisions": Counter(), "latencies": [], "safe": 0, "safe_total": 0}
+    for rel, doc_type in vlm_sample_paths:
+        evaluate_fn = evaluate_id_card if doc_type == "id_card" else evaluate_bank_account
+        try:
+            t0 = time.time()
+            resp = evaluate_fn(os.path.join(SAMPLES_DIR, rel))
+            elapsed = time.time() - t0
+            dec = resp.decision.value
+            extracted = {f.field_name: f.value for f in resp.ocr.fields}
+        except Exception as e:
+            elapsed = time.time() - t0
+            dec = "ERROR"
+            extracted = {}
+
+        model_results["decisions"][dec] += 1
+        model_results["latencies"].append(elapsed)
+
+        # Safe pass check
+        if dec == "pass":
+            gt = GT.get(rel)
+            if gt:
+                critical = CRITICAL_FIELDS.get(doc_type, [])
+                model_results["safe_total"] += 1
+                all_ok = True
+                for fname in critical:
+                    gt_val = gt["fields"].get(fname, "")
+                    ocr_val = extracted.get(fname, "")
+                    if fname == "name":
+                        gt_val = gt_val.replace(" ", "")
+                        ocr_val = ocr_val.replace(" ", "")
+                    if not (gt_val and ocr_val and gt_val.strip() == ocr_val.strip()):
+                        all_ok = False
+                if all_ok:
+                    model_results["safe"] += 1
+
+        print(f"  [{model_key}] {elapsed:.1f}s {dec:16s} {rel}", flush=True)
+
+    model_comparison[model_key] = model_results
+
+# 비교 테이블
+print("\n### Decision Distribution by Model\n")
+header = "| Decision |"
+sep = "|----------|"
+for mk in sorted(model_comparison):
+    header += f" {mk} |"
+    sep += "------|"
+print(header)
+print(sep)
+for d in ["pass", "review", "retake", "invalid_doc_type", "ERROR"]:
+    row = f"| {d} |"
+    for mk in sorted(model_comparison):
+        row += f" {model_comparison[mk]['decisions'].get(d, 0)} |"
+    print(row)
+
+print("\n### Latency by Model\n")
+print("| Model | Avg (s) | Min (s) | Max (s) |")
+print("|-------|---------|---------|---------|")
+for mk in sorted(model_comparison):
+    lats = model_comparison[mk]["latencies"]
+    if lats:
+        print(f"| {mk} | {sum(lats)/len(lats):.1f} | {min(lats):.1f} | {max(lats):.1f} |")
+
+print("\n### Safe Pass Rate by Model\n")
+print("| Model | Safe | Total Pass | Rate |")
+print("|-------|------|------------|------|")
+for mk in sorted(model_comparison):
+    mc = model_comparison[mk]
+    st_val = mc["safe_total"]
+    rate = mc["safe"] / st_val * 100 if st_val else 0
+    print(f"| {mk} | {mc['safe']} | {st_val} | {rate:.1f}% |")
+
+# 기본 모델로 복원
+set_model("4B")
+
 # ── Save results ──
 from datetime import datetime
 
@@ -280,6 +376,14 @@ report_json = {
         "changed_cases": vlm_changed,
     },
     "per_sample": [{k: v for k, v in r.items() if k != "extracted"} for r in results],
+    "vlm_model_comparison": {
+        mk: {
+            "decisions": dict(mc["decisions"]),
+            "avg_latency": round(sum(mc["latencies"]) / max(len(mc["latencies"]), 1), 2),
+            "safe_pass": mc["safe"],
+            "safe_total": mc["safe_total"],
+        } for mk, mc in model_comparison.items()
+    },
 }
 
 json_path = os.path.join(out_dir, f"perf_{timestamp}.json")
@@ -358,6 +462,38 @@ if vlm_changed:
     md_lines.append("|------|-------------|----------|")
     for c in vlm_changed:
         md_lines.append(f"| {c['path']} | {c['without_vlm']} | {c['with_vlm']} |")
+
+md_lines.append("\n## 8. VLM Model Comparison\n")
+md_lines.append(f"VLM 호출 대상: {len(vlm_sample_paths)}건\n")
+header = "| Decision |"
+sep = "|----------|"
+for mk in sorted(model_comparison):
+    header += f" {mk} |"
+    sep += "------|"
+md_lines.append(header)
+md_lines.append(sep)
+for d in ["pass", "review", "retake", "invalid_doc_type", "ERROR"]:
+    row = f"| {d} |"
+    for mk in sorted(model_comparison):
+        row += f" {model_comparison[mk]['decisions'].get(d, 0)} |"
+    md_lines.append(row)
+
+md_lines.append("\n### Latency\n")
+md_lines.append("| Model | Avg (s) | Min (s) | Max (s) |")
+md_lines.append("|-------|---------|---------|---------|")
+for mk in sorted(model_comparison):
+    lats = model_comparison[mk]["latencies"]
+    if lats:
+        md_lines.append(f"| {mk} | {sum(lats)/len(lats):.1f} | {min(lats):.1f} | {max(lats):.1f} |")
+
+md_lines.append("\n### Safe Pass Rate\n")
+md_lines.append("| Model | Safe | Total Pass | Rate |")
+md_lines.append("|-------|------|------------|------|")
+for mk in sorted(model_comparison):
+    mc = model_comparison[mk]
+    st_val = mc["safe_total"]
+    rate = mc["safe"] / st_val * 100 if st_val else 0
+    md_lines.append(f"| {mk} | {mc['safe']} | {st_val} | {rate:.1f}% |")
 
 md_path = os.path.join(out_dir, f"perf_{timestamp}.md")
 with open(md_path, "w", encoding="utf-8") as f:
