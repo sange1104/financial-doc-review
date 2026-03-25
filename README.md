@@ -1,17 +1,17 @@
-# OCRGate
+### OCRGate
 
 OCR + Rule Engine + VLM fallback 기반 금융 문서 자동 검수 서비스.
 신분증 / 통장사본 이미지에 대해 **pass / review / retake / invalid_doc_type** 판정을 제공합니다.
 
 > 📄 [Portfolio](portfolio/index.html)
 
-## 문제 정의
+### 문제 정의
 
 - 단순 OCR만으로는 blur, crop, glare 등 품질 저하 이미지에서 오검출/누락이 발생합니다.
 - VLM은 정확도 보완에 유리하지만 latency와 cost가 큽니다.
 - 따라서 **OCR-first + selective VLM fallback** 구조를 설계했습니다. 대부분의 요청은 OCR만으로 빠르게 처리하고, 애매한 케이스에만 VLM을 호출합니다.
 
-## 주요 기능
+### 주요 기능
 
 - **문서 유형**: 신분증 (주민등록증) / 통장사본
 - **4-Gate Validation Pipeline**: 입력 유효성 → 문서 유형 → 필수 필드 → 형식/신뢰도 순차 검증
@@ -20,7 +20,7 @@ OCR + Rule Engine + VLM fallback 기반 금융 문서 자동 검수 서비스.
 - **2단계 SSE 스트리밍**: OCR 결과 즉시 전송 → VLM 보완 후속 전송
 - **FastAPI API + Streamlit UI**: 업로드 → 실시간 분석 → 결과 시각화 → 필드 수정
 
-## 시스템 아키텍처
+### 시스템 아키텍처
 
 ```
 사용자 이미지 업로드
@@ -44,7 +44,7 @@ OCR + Rule Engine + VLM fallback 기반 금융 문서 자동 검수 서비스.
       PASS
 ```
 
-## 프로젝트 구조
+### 프로젝트 구조
 
 ```
 financial-doc-review/
@@ -76,9 +76,9 @@ financial-doc-review/
 └── pyproject.toml
 ```
 
-## 설치 및 실행
+### 설치 및 실행
 
-### 1. 환경 설정
+#### 1. 환경 설정
 
 ```bash
 conda create -n ocr python=3.10
@@ -91,19 +91,19 @@ VLM 사용 시 추가 설치:
 pip install transformers qwen-vl-utils torch
 ```
 
-### 2. API 서버 실행
+#### 2. API 서버 실행
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
 
-### 3. UI 실행
+#### 3. UI 실행
 
 ```bash
 streamlit run app/ui.py --server.port 8501 --server.address 0.0.0.0
 ```
 
-### 4. 성능 평가
+#### 4. 성능 평가
 
 ```bash
 # 변형 샘플 생성
@@ -115,9 +115,9 @@ CUDA_VISIBLE_DEVICES=0 python scripts/perf_test.py
 
 > `--reload` 옵션은 PaddleOCR C++ 백엔드 충돌을 유발하므로 사용하지 않습니다.
 
-## API 명세
+### API 명세
 
-### Endpoints
+#### Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -126,14 +126,14 @@ CUDA_VISIBLE_DEVICES=0 python scripts/perf_test.py
 | POST | `/api/review/id-card/stream` | 신분증 검증 (SSE) |
 | POST | `/api/review/bank-account/stream` | 통장사본 검증 (SSE) |
 
-### Request
+#### Request
 
 ```bash
 curl -X POST http://localhost:8001/api/review/id-card \
   -F "file=@id_card.jpg"
 ```
 
-### Response
+#### Response
 
 ```json
 {
@@ -158,7 +158,7 @@ curl -X POST http://localhost:8001/api/review/id-card \
 }
 ```
 
-## Decision Policy
+### Decision Policy
 
 | Decision | 의미 | 조건 |
 |----------|------|------|
@@ -167,14 +167,14 @@ curl -X POST http://localhost:8001/api/review/id-card \
 | **review** | 담당자 확인 | 일부 필드 누락/저신뢰, 형식 불일치 |
 | **invalid_doc_type** | 문서 유형 불일치 | 신분증 엔드포인트에 통장사본 등 (strong OCR signal 필요) |
 
-### 필수 필드
+#### 필수 필드
 
 | 문서 | 필드 | Confidence 임계값 |
 |------|------|-------------------|
 | 신분증 | name, id_number, address, issue_date | 0.6 / 0.7+형식 / 0.5 / 0.5 |
 | 통장사본 | name, account_number, bank_name | 0.6 / 0.7 / 0.5 |
 
-## 성능 요약
+### 성능 요약
 
 77개 샘플 (valid 7장 + 9종 degradation) 기준:
 
@@ -188,7 +188,7 @@ curl -X POST http://localhost:8001/api/review/id-card \
 | VLM 호출 비율 | 53.2% |
 | valid 이미지 pass | 6/7 |
 
-## 추후 개선 사항
+### 추후 개선 사항
 
 - **이름 추출**: bbox 없이 텍스트 순서 기반 heuristic 사용. OCR line order가 깨지면 오인식 가능.
 - **은행명 매칭**: 하드코딩된 은행명 리스트와 exact match. OCR 오인식 시 매칭 실패.
