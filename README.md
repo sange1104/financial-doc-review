@@ -18,7 +18,7 @@ OCR + Rule Engine + VLM fallback 기반 금융 문서 자동 검수 서비스.
 - **문서 유형**: 신분증 (주민등록증) / 통장사본
 - **4-Gate Validation Pipeline**: 입력 유효성 → 문서 유형 → 필수 필드 → 형식/신뢰도 순차 검증
 - **OCR 기반 필드 추출**: PaddleOCR + 글자별 confidence 추출 (CTC decoder monkey-patch)
-- **VLM fallback**: 문서 유형 재검증 / 누락·저신뢰 필드 reread (Qwen3-VL-4B)
+- **VLM fallback**: 문서 유형 재검증 / 누락·저신뢰 필드 reread (Qwen3-VL-2B)
 - **2단계 SSE 스트리밍**: OCR 결과 즉시 전송 → VLM 보완 후속 전송
 - **FastAPI API + Streamlit UI**: 업로드 → 실시간 분석 → 결과 시각화 → 필드 수정
 
@@ -183,9 +183,9 @@ curl -X POST http://localhost:8001/api/review/id-card \
 | Metric | Value |
 |--------|-------|
 | Total samples | 77 |
-| Safe Pass Rate | 85.0% (17/20) |
+| Safe Pass Rate | 94.7% (18/19) |
 | invalid_doc_type | 0건 |
-| OCR-only 평균 latency | 2.3s |
+| OCR-only 평균 latency | 2.5s |
 | VLM fallback 평균 latency | 3.3s |
 | VLM 호출 비율 | 53.2% |
 | valid 이미지 pass | 6/7 |

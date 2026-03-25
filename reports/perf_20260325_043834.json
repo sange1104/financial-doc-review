@@ -1,0 +1,864 @@
+{
+  "timestamp": "20260325_043834",
+  "total_samples": 77,
+  "decision_distribution": {
+    "retake": 36,
+    "pass": 19,
+    "review": 22
+  },
+  "latency": {
+    "ocr_only": {
+      "count": 36,
+      "avg": 2.46,
+      "min": 0.0,
+      "max": 3.49
+    },
+    "vlm_called": {
+      "count": 41,
+      "avg": 3.32,
+      "min": 2.62,
+      "max": 7.71
+    }
+  },
+  "vlm_call_rate": {
+    "ocr_only": 36,
+    "vlm_called": 41
+  },
+  "safe_pass_rate": {
+    "safe": 18,
+    "total_pass": 19,
+    "rate": 94.7,
+    "field_accuracy": {
+      "name": {
+        "correct": 18,
+        "total": 19,
+        "accuracy": 94.7
+      },
+      "account_number": {
+        "correct": 10,
+        "total": 10,
+        "accuracy": 100.0
+      },
+      "id_number": {
+        "correct": 8,
+        "total": 9,
+        "accuracy": 88.9
+      }
+    },
+    "unsafe_details": [
+      "compression/id_images_compression.jpg: name GT='김유스비' OCR='김유수미'",
+      "compression/id_images_compression.jpg: id_number GT='960201-1234567' OCR='950201-1234567'"
+    ]
+  },
+  "vlm_effect": {
+    "without_vlm": {
+      "retake": 26,
+      "review": 36,
+      "pass": 15
+    },
+    "with_vlm": {
+      "retake": 36,
+      "pass": 19,
+      "review": 22
+    },
+    "changed_cases": [
+      {
+        "path": "compression/bank-account (1)_compression.jpg",
+        "without_vlm": "review",
+        "with_vlm": "retake"
+      },
+      {
+        "path": "compression/bank-account (1)_compression.png",
+        "without_vlm": "review",
+        "with_vlm": "retake"
+      },
+      {
+        "path": "compression/bank-account (2)_compression.jpg",
+        "without_vlm": "review",
+        "with_vlm": "retake"
+      },
+      {
+        "path": "compression/bank-account (3)_compression.jpg",
+        "without_vlm": "review",
+        "with_vlm": "pass"
+      },
+      {
+        "path": "compression/id_images_compression.jpg",
+        "without_vlm": "review",
+        "with_vlm": "pass"
+      },
+      {
+        "path": "crop_left/bank-account (2)_crop_left.jpg",
+        "without_vlm": "review",
+        "with_vlm": "retake"
+      },
+      {
+        "path": "crop_top/bank-account (1)_crop_top.jpg",
+        "without_vlm": "review",
+        "with_vlm": "retake"
+      },
+      {
+        "path": "crop_top/bank-account (2)_crop_top.jpg",
+        "without_vlm": "review",
+        "with_vlm": "retake"
+      },
+      {
+        "path": "crop_top/bank-account (3)_crop_top.jpg",
+        "without_vlm": "review",
+        "with_vlm": "retake"
+      },
+      {
+        "path": "glare/bank-account (1)_glare.jpg",
+        "without_vlm": "review",
+        "with_vlm": "retake"
+      },
+      {
+        "path": "glare/bank-account (2)_glare.jpg",
+        "without_vlm": "review",
+        "with_vlm": "retake"
+      },
+      {
+        "path": "low_contrast/bank-account (2)_low_contrast.jpg",
+        "without_vlm": "review",
+        "with_vlm": "pass"
+      },
+      {
+        "path": "rotation/bank-account (2)_rotation.jpg",
+        "without_vlm": "review",
+        "with_vlm": "retake"
+      },
+      {
+        "path": "valid/bank-account (2).jpg",
+        "without_vlm": "review",
+        "with_vlm": "pass"
+      }
+    ]
+  },
+  "per_sample": [
+    {
+      "path": "blur/bank-account (1)_blur.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 3.492048978805542,
+      "fields": 0,
+      "reason": "image too blurry (score: 1.33); OCR could not identify document type"
+    },
+    {
+      "path": "blur/bank-account (1)_blur.png",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.376776933670044,
+      "fields": 0,
+      "reason": "image too blurry (score: 1.18); OCR could not identify document type"
+    },
+    {
+      "path": "blur/bank-account (2)_blur.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.3791587352752686,
+      "fields": 0,
+      "reason": "image too blurry (score: 1.5); OCR could not identify document type"
+    },
+    {
+      "path": "blur/bank-account (3)_blur.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.3046910762786865,
+      "fields": 0,
+      "reason": "image too blurry (score: 0.79); OCR could not identify document type"
+    },
+    {
+      "path": "blur/id_20250314112421388_8PFLXVJ5_blur.png",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.468001365661621,
+      "fields": 0,
+      "reason": "image too blurry (score: 2.4); OCR could not identify document type"
+    },
+    {
+      "path": "blur/id_Korea ID version 2_blur.jpg",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.328383684158325,
+      "fields": 0,
+      "reason": "image too blurry (score: 1.86); OCR could not identify document type"
+    },
+    {
+      "path": "blur/id_images_blur.jpg",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.4526455402374268,
+      "fields": 0,
+      "reason": "image too blurry (score: 2.6); OCR could not identify document type"
+    },
+    {
+      "path": "compression/bank-account (1)_compression.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 7.707115650177002,
+      "fields": 2,
+      "reason": "account_number not found after OCR + VLM reread"
+    },
+    {
+      "path": "compression/bank-account (1)_compression.png",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 4.759926080703735,
+      "fields": 2,
+      "reason": "account_number not found after OCR + VLM reread"
+    },
+    {
+      "path": "compression/bank-account (2)_compression.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 3.269395589828491,
+      "fields": 1,
+      "reason": "account_number not found after OCR + VLM reread"
+    },
+    {
+      "path": "compression/bank-account (3)_compression.jpg",
+      "doc_type": "bank_account",
+      "decision": "pass",
+      "vlm": true,
+      "latency": 2.8061470985412598,
+      "fields": 3,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "compression/id_20250314112421388_8PFLXVJ5_compression.png",
+      "doc_type": "id_card",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.5613789558410645,
+      "fields": 4,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "compression/id_Korea ID version 2_compression.jpg",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 3.9193413257598877,
+      "fields": 0,
+      "reason": "이 문서는 \"주민등록증\"으로 보이지만, 이미지에 표시된 인물은 유명한 캐릭터인 '머스터 랭'이며, 실제 주민등록증은 이런 캐릭터를 포함하지"
+    },
+    {
+      "path": "compression/id_images_compression.jpg",
+      "doc_type": "id_card",
+      "decision": "pass",
+      "vlm": true,
+      "latency": 3.265533447265625,
+      "fields": 2,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "crop/bank-account (1)_crop.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.361997127532959,
+      "fields": 1,
+      "reason": "No required fields (account_number, name) could be extracted"
+    },
+    {
+      "path": "crop/bank-account (1)_crop.png",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.414231538772583,
+      "fields": 1,
+      "reason": "No required fields (account_number, name) could be extracted"
+    },
+    {
+      "path": "crop/bank-account (2)_crop.jpg",
+      "doc_type": "bank_account",
+      "decision": "review",
+      "vlm": true,
+      "latency": 2.886775255203247,
+      "fields": 2,
+      "reason": "bank_name field not found"
+    },
+    {
+      "path": "crop/bank-account (3)_crop.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.4210000038146973,
+      "fields": 0,
+      "reason": "OCR extracted too little text from image"
+    },
+    {
+      "path": "crop/id_20250314112421388_8PFLXVJ5_crop.png",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.34692120552063,
+      "fields": 1,
+      "reason": "OCR extracted too little text from image"
+    },
+    {
+      "path": "crop/id_Korea ID version 2_crop.jpg",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 3.000736713409424,
+      "fields": 0,
+      "reason": "OCR extracted too little text from image"
+    },
+    {
+      "path": "crop/id_images_crop.jpg",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 0.0005538463592529297,
+      "fields": 0,
+      "reason": "Image too small for document recognition"
+    },
+    {
+      "path": "crop_bottom/bank-account (1)_crop_bottom.jpg",
+      "doc_type": "bank_account",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.5165607929229736,
+      "fields": 3,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "crop_bottom/bank-account (1)_crop_bottom.png",
+      "doc_type": "bank_account",
+      "decision": "review",
+      "vlm": true,
+      "latency": 3.1689321994781494,
+      "fields": 3,
+      "reason": "account_number confidence too low (0.50)"
+    },
+    {
+      "path": "crop_bottom/bank-account (2)_crop_bottom.jpg",
+      "doc_type": "bank_account",
+      "decision": "review",
+      "vlm": true,
+      "latency": 4.094368934631348,
+      "fields": 3,
+      "reason": "account_number confidence too low (0.50)"
+    },
+    {
+      "path": "crop_bottom/bank-account (3)_crop_bottom.jpg",
+      "doc_type": "bank_account",
+      "decision": "review",
+      "vlm": true,
+      "latency": 2.618431806564331,
+      "fields": 2,
+      "reason": "bank_name field not found"
+    },
+    {
+      "path": "crop_bottom/id_20250314112421388_8PFLXVJ5_crop_bottom.png",
+      "doc_type": "id_card",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.385169744491577,
+      "fields": 3,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "crop_bottom/id_Korea ID version 2_crop_bottom.jpg",
+      "doc_type": "id_card",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.5839617252349854,
+      "fields": 3,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "crop_bottom/id_images_crop_bottom.jpg",
+      "doc_type": "id_card",
+      "decision": "review",
+      "vlm": true,
+      "latency": 2.9768409729003906,
+      "fields": 2,
+      "reason": "id_number confidence too low (0.50)"
+    },
+    {
+      "path": "crop_left/bank-account (1)_crop_left.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.470482587814331,
+      "fields": 1,
+      "reason": "No required fields (account_number, name) could be extracted"
+    },
+    {
+      "path": "crop_left/bank-account (1)_crop_left.png",
+      "doc_type": "bank_account",
+      "decision": "review",
+      "vlm": true,
+      "latency": 3.320352077484131,
+      "fields": 3,
+      "reason": "account_number confidence too low (0.50)"
+    },
+    {
+      "path": "crop_left/bank-account (2)_crop_left.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 2.88934326171875,
+      "fields": 1,
+      "reason": "account_number not found after OCR + VLM reread"
+    },
+    {
+      "path": "crop_left/bank-account (3)_crop_left.jpg",
+      "doc_type": "bank_account",
+      "decision": "review",
+      "vlm": true,
+      "latency": 3.0885746479034424,
+      "fields": 3,
+      "reason": "account_number confidence too low (0.50); name low confidence chars: '른' at posi"
+    },
+    {
+      "path": "crop_left/id_20250314112421388_8PFLXVJ5_crop_left.png",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 3.322120428085327,
+      "fields": 1,
+      "reason": "No required fields (name, id_number) could be extracted"
+    },
+    {
+      "path": "crop_left/id_Korea ID version 2_crop_left.jpg",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 3.202500581741333,
+      "fields": 0,
+      "reason": "이 문서는 \"영화 캐릭터 사진\"이 포함된 인공지능 생성 이미지로 보입니다."
+    },
+    {
+      "path": "crop_left/id_images_crop_left.jpg",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 3.2951223850250244,
+      "fields": 0,
+      "reason": "이 문서는 \"국가인증서\" 또는 \"정부 공식 인증서\"로 보입니다."
+    },
+    {
+      "path": "crop_top/bank-account (1)_crop_top.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 2.7680470943450928,
+      "fields": 2,
+      "reason": "account_number not found after OCR + VLM reread"
+    },
+    {
+      "path": "crop_top/bank-account (1)_crop_top.png",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.5313384532928467,
+      "fields": 0,
+      "reason": "No required fields (account_number, name) could be extracted"
+    },
+    {
+      "path": "crop_top/bank-account (2)_crop_top.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 3.109031915664673,
+      "fields": 1,
+      "reason": "account_number not found after OCR + VLM reread"
+    },
+    {
+      "path": "crop_top/bank-account (3)_crop_top.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 2.6593070030212402,
+      "fields": 2,
+      "reason": "account_number not found after OCR + VLM reread"
+    },
+    {
+      "path": "crop_top/id_20250314112421388_8PFLXVJ5_crop_top.png",
+      "doc_type": "id_card",
+      "decision": "review",
+      "vlm": true,
+      "latency": 3.050070285797119,
+      "fields": 3,
+      "reason": "name field not found"
+    },
+    {
+      "path": "crop_top/id_Korea ID version 2_crop_top.jpg",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 3.539954900741577,
+      "fields": 2,
+      "reason": "No required fields (name, id_number) could be extracted"
+    },
+    {
+      "path": "crop_top/id_images_crop_top.jpg",
+      "doc_type": "id_card",
+      "decision": "review",
+      "vlm": true,
+      "latency": 3.516474485397339,
+      "fields": 3,
+      "reason": "name field not found"
+    },
+    {
+      "path": "downscale/bank-account (1)_downscale.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 2.9864397048950195,
+      "fields": 0,
+      "reason": "이 문서는 \"NH농협은행의 통장사본\"으로 보입니다."
+    },
+    {
+      "path": "downscale/bank-account (1)_downscale.png",
+      "doc_type": "bank_account",
+      "decision": "review",
+      "vlm": true,
+      "latency": 3.998962163925171,
+      "fields": 3,
+      "reason": "account_number confidence too low (0.50); name confidence too low (0.50)"
+    },
+    {
+      "path": "downscale/bank-account (2)_downscale.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 2.8753676414489746,
+      "fields": 0,
+      "reason": "이 문서는 \"건강보험 관련 서류\"로 보입니다."
+    },
+    {
+      "path": "downscale/bank-account (3)_downscale.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.313659429550171,
+      "fields": 0,
+      "reason": "No required fields (account_number, name) could be extracted"
+    },
+    {
+      "path": "downscale/id_20250314112421388_8PFLXVJ5_downscale.png",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 3.094775438308716,
+      "fields": 0,
+      "reason": "No required fields (name, id_number) could be extracted"
+    },
+    {
+      "path": "downscale/id_Korea ID version 2_downscale.jpg",
+      "doc_type": "id_card",
+      "decision": "review",
+      "vlm": true,
+      "latency": 3.7522523403167725,
+      "fields": 2,
+      "reason": "name field not found"
+    },
+    {
+      "path": "downscale/id_images_downscale.jpg",
+      "doc_type": "id_card",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 2.728536367416382,
+      "fields": 0,
+      "reason": "이 문서는 \"주민등록증\"으로 보입니다."
+    },
+    {
+      "path": "glare/bank-account (1)_glare.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 2.994199275970459,
+      "fields": 2,
+      "reason": "account_number not found after OCR + VLM reread"
+    },
+    {
+      "path": "glare/bank-account (1)_glare.png",
+      "doc_type": "bank_account",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.7501299381256104,
+      "fields": 3,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "glare/bank-account (2)_glare.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 3.4386699199676514,
+      "fields": 1,
+      "reason": "account_number not found after OCR + VLM reread"
+    },
+    {
+      "path": "glare/bank-account (3)_glare.jpg",
+      "doc_type": "bank_account",
+      "decision": "review",
+      "vlm": false,
+      "latency": 2.668466329574585,
+      "fields": 3,
+      "reason": "name confidence too low (0.50)"
+    },
+    {
+      "path": "glare/id_20250314112421388_8PFLXVJ5_glare.png",
+      "doc_type": "id_card",
+      "decision": "review",
+      "vlm": false,
+      "latency": 2.5612378120422363,
+      "fields": 4,
+      "reason": "address low confidence chars: '1' at position 16 (0.46), '동' at position 23 (0.4"
+    },
+    {
+      "path": "glare/id_Korea ID version 2_glare.jpg",
+      "doc_type": "id_card",
+      "decision": "review",
+      "vlm": true,
+      "latency": 2.8149406909942627,
+      "fields": 2,
+      "reason": "id_number field not found"
+    },
+    {
+      "path": "glare/id_images_glare.jpg",
+      "doc_type": "id_card",
+      "decision": "review",
+      "vlm": true,
+      "latency": 2.9056642055511475,
+      "fields": 2,
+      "reason": "id_number confidence too low (0.50)"
+    },
+    {
+      "path": "low_contrast/bank-account (1)_low_contrast.jpg",
+      "doc_type": "bank_account",
+      "decision": "review",
+      "vlm": true,
+      "latency": 3.0588083267211914,
+      "fields": 3,
+      "reason": "account_number confidence too low (0.50)"
+    },
+    {
+      "path": "low_contrast/bank-account (1)_low_contrast.png",
+      "doc_type": "bank_account",
+      "decision": "review",
+      "vlm": true,
+      "latency": 3.568418502807617,
+      "fields": 3,
+      "reason": "account_number confidence too low (0.50)"
+    },
+    {
+      "path": "low_contrast/bank-account (2)_low_contrast.jpg",
+      "doc_type": "bank_account",
+      "decision": "pass",
+      "vlm": true,
+      "latency": 3.0842831134796143,
+      "fields": 3,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "low_contrast/bank-account (3)_low_contrast.jpg",
+      "doc_type": "bank_account",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.5577478408813477,
+      "fields": 3,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "low_contrast/id_20250314112421388_8PFLXVJ5_low_contrast.png",
+      "doc_type": "id_card",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.6948647499084473,
+      "fields": 4,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "low_contrast/id_Korea ID version 2_low_contrast.jpg",
+      "doc_type": "id_card",
+      "decision": "review",
+      "vlm": false,
+      "latency": 2.4562597274780273,
+      "fields": 3,
+      "reason": "address low confidence chars: '목' at position 3 (0.37)"
+    },
+    {
+      "path": "low_contrast/id_images_low_contrast.jpg",
+      "doc_type": "id_card",
+      "decision": "review",
+      "vlm": false,
+      "latency": 2.3552541732788086,
+      "fields": 4,
+      "reason": "address low confidence chars: '록' at position 3 (0.32), '별' at position 4 (0.43)"
+    },
+    {
+      "path": "rotation/bank-account (1)_rotation.jpg",
+      "doc_type": "bank_account",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.7848551273345947,
+      "fields": 3,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "rotation/bank-account (1)_rotation.png",
+      "doc_type": "bank_account",
+      "decision": "review",
+      "vlm": true,
+      "latency": 3.2432515621185303,
+      "fields": 3,
+      "reason": "account_number confidence too low (0.50)"
+    },
+    {
+      "path": "rotation/bank-account (2)_rotation.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": true,
+      "latency": 2.9290127754211426,
+      "fields": 2,
+      "reason": "account_number not found after OCR + VLM reread"
+    },
+    {
+      "path": "rotation/bank-account (3)_rotation.jpg",
+      "doc_type": "bank_account",
+      "decision": "retake",
+      "vlm": false,
+      "latency": 2.6215343475341797,
+      "fields": 1,
+      "reason": "No required fields (account_number, name) could be extracted"
+    },
+    {
+      "path": "rotation/id_20250314112421388_8PFLXVJ5_rotation.png",
+      "doc_type": "id_card",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.544339895248413,
+      "fields": 4,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "rotation/id_Korea ID version 2_rotation.jpg",
+      "doc_type": "id_card",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.3843119144439697,
+      "fields": 4,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "rotation/id_images_rotation.jpg",
+      "doc_type": "id_card",
+      "decision": "review",
+      "vlm": true,
+      "latency": 3.242002010345459,
+      "fields": 4,
+      "reason": "address low confidence chars: '파' at position 3 (0.43), '벌' at position 12 (0.31"
+    },
+    {
+      "path": "valid/bank-account (1).jpg",
+      "doc_type": "bank_account",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.664503574371338,
+      "fields": 3,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "valid/bank-account (1).png",
+      "doc_type": "bank_account",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.7314224243164062,
+      "fields": 3,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "valid/bank-account (2).jpg",
+      "doc_type": "bank_account",
+      "decision": "pass",
+      "vlm": true,
+      "latency": 3.1085636615753174,
+      "fields": 3,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "valid/bank-account (3).jpg",
+      "doc_type": "bank_account",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.4733622074127197,
+      "fields": 3,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "valid/id_20250314112421388_8PFLXVJ5.png",
+      "doc_type": "id_card",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.4228243827819824,
+      "fields": 4,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "valid/id_Korea ID version 2.jpg",
+      "doc_type": "id_card",
+      "decision": "pass",
+      "vlm": false,
+      "latency": 2.616408586502075,
+      "fields": 4,
+      "reason": "모든 필수 정보가 정상적으로 확인되었습니다"
+    },
+    {
+      "path": "valid/id_images.jpg",
+      "doc_type": "id_card",
+      "decision": "review",
+      "vlm": false,
+      "latency": 2.47685170173645,
+      "fields": 3,
+      "reason": "address low confidence chars: '파' at position 5 (0.47), '별' at position 17 (0.38"
+    }
+  ],
+  "vlm_model_comparison": {
+    "2B": {
+      "decisions": {
+        "retake": 19,
+        "review": 18,
+        "pass": 4
+      },
+      "avg_latency": 3.33,
+      "safe_pass": 3,
+      "safe_total": 4
+    },
+    "4B": {
+      "decisions": {
+        "retake": 20,
+        "pass": 4,
+        "review": 17
+      },
+      "avg_latency": 3.27,
+      "safe_pass": 3,
+      "safe_total": 4
+    },
+    "8B": {
+      "decisions": {
+        "retake": 20,
+        "pass": 4,
+        "review": 17
+      },
+      "avg_latency": 3.36,
+      "safe_pass": 3,
+      "safe_total": 4
+    }
+  }
+}

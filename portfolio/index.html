@@ -179,7 +179,7 @@
 
   <ol class="nlist">
     <li><strong>OCR만으로 충분한 케이스가 대다수</strong> — 정상 이미지는 OCR confidence가 높고 필드 추출이 안정적. 굳이 VLM을 호출할 필요 없음.</li>
-    <li><strong>VLM은 "애매한 경우"에만 가치 있음</strong> — 문서 유형 불명확, OCR 필드 누락/저신뢰 등. 모든 요청에 VLM을 쓰면 latency 2.3s → 3.3s로 43% 증가.</li>
+    <li><strong>VLM은 "애매한 경우"에만 가치 있음</strong> — 문서 유형 불명확, OCR 필드 누락/저신뢰 등. 모든 요청에 VLM을 쓰면 latency 2.5s → 3.3s로 32% 증가.</li>
     <li><strong>숫자 필드는 VLM도 보수적으로</strong> — 주민번호·계좌번호는 OCR-VLM 정확 일치 시에만 승격. 틀린 값에 높은 confidence를 부여하는 것이 가장 위험.</li>
   </ol>
 
@@ -289,7 +289,7 @@
     <div>
       <div class="hl">
         <strong>3. 모든 요청에 VLM을 적용하지 않음</strong><br>
-        ambiguity case에만 selective fallback. OCR-only path(46.8%)는 평균 2.3s, VLM path(53.2%)는 3.3s.
+        ambiguity case에만 selective fallback. OCR-only path(46.8%)는 평균 2.5s, VLM path(53.2%)는 3.3s.
         정상 이미지 대부분은 VLM 없이 빠르게 pass.
       </div>
 
@@ -318,15 +318,15 @@
     <div>
       <h3>Decision Distribution</h3>
       <div style="margin-bottom:3mm;">
-        <div class="bar-row"><div class="bar-label">pass</div><div class="bar-track"><div class="bar-fill" style="width:26%;background:var(--pass);"><span>20</span></div></div><div class="bar-val">26.0%</div></div>
-        <div class="bar-row"><div class="bar-label">review</div><div class="bar-track"><div class="bar-fill" style="width:29.9%;background:var(--review);"><span>23</span></div></div><div class="bar-val">29.9%</div></div>
-        <div class="bar-row"><div class="bar-label">retake</div><div class="bar-track"><div class="bar-fill" style="width:44.2%;background:var(--retake);"><span>34</span></div></div><div class="bar-val">44.2%</div></div>
+        <div class="bar-row"><div class="bar-label">pass</div><div class="bar-track"><div class="bar-fill" style="width:24.7%;background:var(--pass);"><span>19</span></div></div><div class="bar-val">24.7%</div></div>
+        <div class="bar-row"><div class="bar-label">review</div><div class="bar-track"><div class="bar-fill" style="width:28.6%;background:var(--review);"><span>22</span></div></div><div class="bar-val">28.6%</div></div>
+        <div class="bar-row"><div class="bar-label">retake</div><div class="bar-track"><div class="bar-fill" style="width:46.8%;background:var(--retake);"><span>36</span></div></div><div class="bar-val">46.8%</div></div>
         <div class="bar-row"><div class="bar-label">invalid</div><div class="bar-track"><div class="bar-fill" style="width:0%;background:var(--invalid);"></div></div><div class="bar-val">0.0%</div></div>
       </div>
 
       <h3>Latency &amp; VLM Call Rate</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:2mm;margin-bottom:3mm;">
-        <div class="stat"><div class="num" style="font-size:14pt;">2.3s</div><div class="lbl">OCR only (36건, 46.8%)</div></div>
+        <div class="stat"><div class="num" style="font-size:14pt;">2.5s</div><div class="lbl">OCR only (36건, 46.8%)</div></div>
         <div class="stat"><div class="num" style="font-size:14pt;">3.3s</div><div class="lbl">VLM called (41건, 53.2%)</div></div>
       </div>
 
@@ -334,11 +334,11 @@
       <table>
         <thead><tr><th>Mode</th><th style="text-align:right;">Count</th></tr></thead>
         <tbody>
-          <tr><td>account_number not found after OCR + VLM reread</td><td style="text-align:right;"><span class="badge retake">8</span></td></tr>
-          <tr><td>account_number confidence too low (0.50)</td><td style="text-align:right;"><span class="badge review">8</span></td></tr>
+          <tr><td>account_number not found after OCR + VLM reread</td><td style="text-align:right;"><span class="badge retake">10</span></td></tr>
           <tr><td>No required fields (account_number, name)</td><td style="text-align:right;"><span class="badge retake">6</span></td></tr>
+          <tr><td>account_number confidence too low (0.50)</td><td style="text-align:right;"><span class="badge review">6</span></td></tr>
           <tr><td>OCR extracted too little text</td><td style="text-align:right;"><span class="badge retake">3</span></td></tr>
-          <tr><td>name field not found</td><td style="text-align:right;"><span class="badge review">3</span></td></tr>
+          <tr><td>No required fields (name, id_number)</td><td style="text-align:right;"><span class="badge retake">3</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -347,29 +347,29 @@
       <h3>Per-folder Decision Distribution</h3>
       <div class="hm">
         <div class="hm-h hm-l">Folder</div><div class="hm-h">Pass</div><div class="hm-h">Review</div><div class="hm-h">Retake</div><div class="hm-h hm-r">Latency</div>
-        <div class="hm-c hm-l">valid</div><div class="hm-c" style="background:#dcfce7;font-weight:700;color:#166534;">6</div><div class="hm-c">1</div><div class="hm-c">0</div><div class="hm-c hm-r">2.5s</div>
+        <div class="hm-c hm-l">valid</div><div class="hm-c" style="background:#dcfce7;font-weight:700;color:#166534;">6</div><div class="hm-c">1</div><div class="hm-c">0</div><div class="hm-c hm-r">2.6s</div>
         <div class="hm-c hm-l">blur</div><div class="hm-c">0</div><div class="hm-c">0</div><div class="hm-c" style="background:#fee2e2;font-weight:700;color:#991b1b;">7</div><div class="hm-c hm-r">2.5s</div>
-        <div class="hm-c hm-l">compression</div><div class="hm-c">3</div><div class="hm-c">1</div><div class="hm-c">3</div><div class="hm-c hm-r">3.9s</div>
-        <div class="hm-c hm-l">crop</div><div class="hm-c">1</div><div class="hm-c">0</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">6</div><div class="hm-c hm-r">2.1s</div>
-        <div class="hm-c hm-l">crop_bottom</div><div class="hm-c">3</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">4</div><div class="hm-c">0</div><div class="hm-c hm-r">2.8s</div>
-        <div class="hm-c hm-l">crop_left</div><div class="hm-c">0</div><div class="hm-c">2</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">5</div><div class="hm-c hm-r">2.9s</div>
-        <div class="hm-c hm-l">crop_top</div><div class="hm-c">0</div><div class="hm-c">2</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">5</div><div class="hm-c hm-r">3.2s</div>
-        <div class="hm-c hm-l">downscale</div><div class="hm-c">0</div><div class="hm-c">2</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">5</div><div class="hm-c hm-r">3.2s</div>
-        <div class="hm-c hm-l">glare</div><div class="hm-c">1</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">5</div><div class="hm-c">1</div><div class="hm-c hm-r">2.8s</div>
-        <div class="hm-c hm-l">low_contrast</div><div class="hm-c">3</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">4</div><div class="hm-c">0</div><div class="hm-c hm-r">2.7s</div>
-        <div class="hm-c hm-l">rotation</div><div class="hm-c">3</div><div class="hm-c">2</div><div class="hm-c">2</div><div class="hm-c hm-r">2.6s</div>
+        <div class="hm-c hm-l">compression</div><div class="hm-c">3</div><div class="hm-c">0</div><div class="hm-c">4</div><div class="hm-c hm-r">4.0s</div>
+        <div class="hm-c hm-l">crop</div><div class="hm-c">0</div><div class="hm-c">1</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">6</div><div class="hm-c hm-r">2.2s</div>
+        <div class="hm-c hm-l">crop_bottom</div><div class="hm-c">3</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">4</div><div class="hm-c">0</div><div class="hm-c hm-r">2.9s</div>
+        <div class="hm-c hm-l">crop_left</div><div class="hm-c">0</div><div class="hm-c">2</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">5</div><div class="hm-c hm-r">3.1s</div>
+        <div class="hm-c hm-l">crop_top</div><div class="hm-c">0</div><div class="hm-c">2</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">5</div><div class="hm-c hm-r">3.0s</div>
+        <div class="hm-c hm-l">downscale</div><div class="hm-c">0</div><div class="hm-c">2</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">5</div><div class="hm-c hm-r">3.1s</div>
+        <div class="hm-c hm-l">glare</div><div class="hm-c">1</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">4</div><div class="hm-c">2</div><div class="hm-c hm-r">2.9s</div>
+        <div class="hm-c hm-l">low_contrast</div><div class="hm-c">3</div><div class="hm-c" style="background:#fef3c7;font-weight:600;">4</div><div class="hm-c">0</div><div class="hm-c hm-r">2.8s</div>
+        <div class="hm-c hm-l">rotation</div><div class="hm-c">3</div><div class="hm-c">2</div><div class="hm-c">2</div><div class="hm-c hm-r">2.8s</div>
       </div>
 
       <h3 style="margin-top:4mm;">Safe Pass Rate</h3>
       <div class="stat-row c3" style="margin-bottom:2mm;">
-        <div class="stat"><div class="num">85.0%</div><div class="lbl">Safe Pass Rate (17/20)</div></div>
-        <div class="stat"><div class="num" style="font-size:14pt;">90.9%</div><div class="lbl">account_number</div></div>
+        <div class="stat"><div class="num">94.7%</div><div class="lbl">Safe Pass Rate (18/19)</div></div>
+        <div class="stat"><div class="num" style="font-size:14pt;">100%</div><div class="lbl">account_number</div></div>
         <div class="stat"><div class="num" style="font-size:14pt;">88.9%</div><div class="lbl">id_number</div></div>
       </div>
 
       <div class="hl">
         <strong>Safe Pass Rate</strong> = (pass AND 핵심 필드 GT 일치) / 전체 pass<br>
-        3건 unsafe: name 오인식 2건 (compression 열화), account_number 끝자리 누락 1건 (crop)
+        1건 unsafe: compression 열화로 name/id_number 오인식 (김유스비→김유수미, 960201→950201)
       </div>
     </div>
   </div>
@@ -387,30 +387,30 @@
   <div class="cols c2">
     <div>
       <h2><span class="n">7</span> VLM Effect</h2>
-      <p class="sub">VLM 도입 전후 decision 변화 (13건 변경)</p>
+      <p class="sub">VLM 도입 전후 decision 변화 (14건 변경)</p>
 
       <table>
         <thead><tr><th>Decision</th><th style="text-align:center;">Without VLM</th><th style="text-align:center;">With VLM</th><th style="text-align:center;">Delta</th></tr></thead>
         <tbody>
-          <tr><td><span class="badge pass">pass</span></td><td style="text-align:center;">15</td><td style="text-align:center;">20</td><td style="text-align:center;color:var(--pass);font-weight:700;">+5</td></tr>
-          <tr><td><span class="badge review">review</span></td><td style="text-align:center;">36</td><td style="text-align:center;">23</td><td style="text-align:center;color:var(--pass);font-weight:700;">-13</td></tr>
-          <tr><td><span class="badge retake">retake</span></td><td style="text-align:center;">26</td><td style="text-align:center;">34</td><td style="text-align:center;color:var(--retake);font-weight:700;">+8</td></tr>
+          <tr><td><span class="badge pass">pass</span></td><td style="text-align:center;">15</td><td style="text-align:center;">19</td><td style="text-align:center;color:var(--pass);font-weight:700;">+4</td></tr>
+          <tr><td><span class="badge review">review</span></td><td style="text-align:center;">36</td><td style="text-align:center;">22</td><td style="text-align:center;color:var(--pass);font-weight:700;">-14</td></tr>
+          <tr><td><span class="badge retake">retake</span></td><td style="text-align:center;">26</td><td style="text-align:center;">36</td><td style="text-align:center;color:var(--retake);font-weight:700;">+10</td></tr>
         </tbody>
       </table>
 
       <div class="hl" style="margin-top:2mm;">
-        review → pass <strong>5건</strong> (불필요 수동확인 제거)<br>
-        review → retake <strong>8건</strong> (명확한 실패 조기 식별)<br>
-        review 36 → 23, <strong>36% 감소</strong>
+        review → pass <strong>4건</strong> (불필요 수동확인 제거)<br>
+        review → retake <strong>10건</strong> (명확한 실패 조기 식별)<br>
+        review 36 → 22, <strong>39% 감소</strong>
       </div>
 
       <h3>VLM Model Comparison (2B / 4B / 8B)</h3>
       <table>
         <thead><tr><th>Metric</th><th style="text-align:center;">2B</th><th style="text-align:center;">4B</th><th style="text-align:center;">8B</th></tr></thead>
         <tbody>
-          <tr><td>Decision</td><td style="text-align:center;" colspan="3">pass 5 / review 18 / retake 18 — <b>동일</b></td></tr>
-          <tr><td>Latency</td><td style="text-align:center;">3.2s</td><td style="text-align:center;font-weight:700;color:var(--pass);">3.0s</td><td style="text-align:center;">3.2s</td></tr>
-          <tr><td>Safe Pass Rate</td><td style="text-align:center;" colspan="3">2/5 (40.0%) — 동일</td></tr>
+          <tr><td>Decision</td><td style="text-align:center;">p4/rv18/rt19</td><td style="text-align:center;">p4/rv17/rt20</td><td style="text-align:center;">p4/rv17/rt20</td></tr>
+          <tr><td>Latency</td><td style="text-align:center;font-weight:700;color:var(--pass);">3.3s</td><td style="text-align:center;">3.3s</td><td style="text-align:center;">3.4s</td></tr>
+          <tr><td>Safe Pass Rate</td><td style="text-align:center;" colspan="3">3/4 (75.0%) — 동일</td></tr>
         </tbody>
       </table>
 
@@ -453,7 +453,7 @@
         <strong>1.</strong> 중요한 건 큰 모델이 아니라 <strong>fallback을 어디에 쓰지 않을지</strong> 설계하는 것.<br>
         <strong>2.</strong> 이 프로젝트는 OCR 정확도 향상이 아닌 <strong>"안전한 자동 판정 시스템 설계"</strong>에 가까움.<br>
         <strong>3.</strong> 금융 서비스에서는 review를 줄이는 것보다 <strong>unsafe pass를 줄이는 게 더 중요</strong>.<br>
-        <strong>4.</strong> VLM 2B/4B/8B 비교에서 decision 차이가 없었음. <strong>소형 모델로도 충분한 fallback 품질</strong> 확보 가능.
+        <strong>4.</strong> VLM 2B/4B/8B 비교에서 decision/Safe Pass Rate 차이 미미. <strong>소형 모델로도 충분한 fallback 품질</strong> 확보 가능.
       </div>
 
       <h2 style="margin-top:5mm;"><span class="n">11</span> Known Limitations</h2>
@@ -469,7 +469,7 @@
         <div class="card" style="text-align:center;padding:2mm;"><h4>FastAPI</h4><p>REST + SSE</p></div>
         <div class="card" style="text-align:center;padding:2mm;"><h4>Streamlit</h4><p>Web UI</p></div>
         <div class="card" style="text-align:center;padding:2mm;"><h4>PaddleOCR</h4><p>Korean OCR</p></div>
-        <div class="card" style="text-align:center;padding:2mm;"><h4>Qwen3-VL</h4><p>VLM 4B</p></div>
+        <div class="card" style="text-align:center;padding:2mm;"><h4>Qwen3-VL</h4><p>VLM 2B</p></div>
       </div>
     </div>
   </div>
