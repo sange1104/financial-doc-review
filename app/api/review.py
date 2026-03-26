@@ -1,16 +1,18 @@
 import json
+import logging
 import os
 import queue
 import tempfile
 import threading
 
 from fastapi import APIRouter, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.schemas.decision import DocumentReviewResponse
 from app.services.rule_engine import evaluate_bank_account, evaluate_id_card
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def _save_upload(file: UploadFile) -> str:
@@ -22,22 +24,37 @@ async def _save_upload(file: UploadFile) -> str:
         return tmp.name
 
 
+async def _safe_evaluate(evaluate_fn, tmp_path: str):
+    """평가 실행 + 에러 시 적절한 HTTP 상태코드 반환."""
+    try:
+        return evaluate_fn(tmp_path)
+    except RuntimeError as e:
+        # OCR/VLM 재시도 실패 (max retries exceeded)
+        logger.error("Evaluation failed after retries: %s", e)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": f"Service temporarily unavailable: {e}"},
+        )
+    except Exception as e:
+        logger.error("Unexpected evaluation error: %s", e, exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal processing error: {type(e).__name__}"},
+        )
+    finally:
+        os.unlink(tmp_path)
+
+
 @router.post("/review/id-card", response_model=DocumentReviewResponse)
 async def review_id_card(file: UploadFile):
     tmp_path = await _save_upload(file)
-    try:
-        return evaluate_id_card(tmp_path)
-    finally:
-        os.unlink(tmp_path)
+    return await _safe_evaluate(evaluate_id_card, tmp_path)
 
 
 @router.post("/review/bank-account", response_model=DocumentReviewResponse)
 async def review_bank_account(file: UploadFile):
     tmp_path = await _save_upload(file)
-    try:
-        return evaluate_bank_account(tmp_path)
-    finally:
-        os.unlink(tmp_path)
+    return await _safe_evaluate(evaluate_bank_account, tmp_path)
 
 
 def _stream_evaluate_async(evaluate_fn, tmp_path: str):
@@ -68,8 +85,12 @@ def _stream_evaluate_async(evaluate_fn, tmp_path: str):
                     q.put({"type": "vlm_update", "data": full_result.model_dump(mode="json")})
 
             q.put({"type": "done"})
+        except RuntimeError as e:
+            logger.error("Stream evaluation failed after retries: %s", e)
+            q.put({"type": "error", "message": str(e), "retryable": True})
         except Exception as e:
-            q.put({"type": "error", "message": str(e)})
+            logger.error("Stream unexpected error: %s", e, exc_info=True)
+            q.put({"type": "error", "message": f"Internal error: {type(e).__name__}", "retryable": False})
         finally:
             os.unlink(tmp_path)
 

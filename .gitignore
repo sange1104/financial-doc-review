@@ -23,3 +23,4 @@ samples/**/*.png
 samples/**/*.jpg
 samples/**/*.jpeg
 !samples/**/.gitkeep
+paddle_gpu_3.0.0.tar.gz

@@ -53,13 +53,28 @@ ISSUER_KEYWORDS = ["청장", "장관", "시장", "군수", "발급"]
 ISSUE_DATE_PATTERN = re.compile(r"(\d{4})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})")
 
 
+OCR_MAX_RETRIES = 2
+
+
 def _run_ocr(image_path: str) -> tuple[list[str], list[float], dict[str, list[tuple[str, float]]]]:
-    """PaddleOCR 실행 후 (texts, scores, char_confs_map) 반환."""
-    with _ocr_lock:
-        ocr = PaddleOCR(use_textline_orientation=True, lang="korean")
-        post = ocr.paddlex_pipeline.text_rec_model.post_op
-        post._all_char_confs = []
-        results = list(ocr.predict(image_path))
+    """PaddleOCR 실행 후 (texts, scores, char_confs_map) 반환. 실패 시 최대 2회 재시도."""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    last_error = None
+    for attempt in range(1, OCR_MAX_RETRIES + 1):
+        try:
+            with _ocr_lock:
+                ocr = PaddleOCR(use_textline_orientation=True, lang="korean", device="gpu:0")
+                post = ocr.paddlex_pipeline.text_rec_model.post_op
+                post._all_char_confs = []
+                results = list(ocr.predict(image_path))
+            break
+        except Exception as e:
+            last_error = e
+            logger.warning("OCR attempt %d/%d failed: %s", attempt, OCR_MAX_RETRIES, e)
+    else:
+        raise RuntimeError(f"OCR failed after {OCR_MAX_RETRIES} attempts: {last_error}") from last_error
 
     # 글자별 confidence를 text 기준으로 매핑
     char_confs_map: dict[str, list[tuple[str, float]]] = {}

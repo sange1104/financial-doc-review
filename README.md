@@ -80,32 +80,65 @@ financial-doc-review/
 
 ### 설치 및 실행
 
+#### 요구 사항
+
+- Python 3.10
+- CUDA 11.8 + cuDNN (GPU 사용 시)
+- 약 4GB 디스크 (PaddleOCR 모델 자동 다운로드)
+
 #### 1. 환경 설정
 
 ```bash
 conda create -n ocr python=3.10
 conda activate ocr
+
+# PyTorch (GPU)
+pip install torch==2.4.1+cu118 torchvision==0.19.1+cu118 \
+  --index-url https://download.pytorch.org/whl/cu118
+
+# PaddlePaddle GPU — PyPI에 3.0.0 GPU 버전이 없으므로 아래 중 택 1:
+# (a) PaddlePaddle 공식 인덱스
+pip install paddlepaddle-gpu==3.0.0 \
+  -f https://www.paddlepaddle.org.cn/whl/linux/cudnn/stable.html
+# (b) CPU만 사용 시
+pip install paddlepaddle==3.0.0
+
+# 나머지 의존성
 pip install -r requirements.txt
+
+# 프로젝트 패키지 설치 (from app.* import 해결)
+pip install -e .
 ```
 
-VLM 사용 시 추가 설치:
+#### 2. VLM 설정 (선택)
+
+VLM 없이도 OCR-only로 동작합니다. VLM fallback을 사용하려면:
+
 ```bash
-pip install transformers qwen-vl-utils torch
+pip install transformers qwen-vl-utils accelerate
 ```
 
-#### 2. API 서버 실행
+로컬에 모델이 있으면 `VLM_BASE` 환경변수로 경로 지정:
+```bash
+export VLM_BASE=/path/to/huggingface/hub
+# 예: /path/to/hub/models--Qwen--Qwen3-VL-4B-Instruct/snapshots/...
+```
+
+설정하지 않으면 HuggingFace에서 자동 다운로드합니다 (최초 실행 시 ~8GB).
+
+#### 3. API 서버 실행
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
 
-#### 3. UI 실행
+#### 4. UI 실행
 
 ```bash
 streamlit run app/ui.py --server.port 8501 --server.address 0.0.0.0
 ```
 
-#### 4. 성능 평가
+#### 5. 성능 평가
 
 ```bash
 # 변형 샘플 생성
@@ -150,7 +183,8 @@ curl -X POST http://localhost:8001/api/review/id-card \
   },
   "ocr": {
     "fields": [
-      {"field_name": "name", "value": "홍길순", "confidence": 0.95, "char_confidences": [...]},
+      {"field_name": "name", "value": "홍길순", "confidence": 0.95,
+       "char_confidences": [{"char": "홍", "confidence": 0.98}, {"char": "길", "confidence": 0.96}, {"char": "순", "confidence": 0.91}]},
       {"field_name": "id_number", "value": "820701-2345678", "confidence": 0.97, "char_confidences": [...]},
       {"field_name": "address", "value": "행복특별시 행복한구 행복로 1길 123", "confidence": 0.92, "char_confidences": [...]},
       {"field_name": "issue_date", "value": "2019.03.01", "confidence": 0.91, "char_confidences": [...]}
@@ -159,6 +193,61 @@ curl -X POST http://localhost:8001/api/review/id-card \
   }
 }
 ```
+
+#### Response 필드 상세
+
+| 필드 | 타입 | 값 범위 | 설명 |
+|------|------|---------|------|
+| `document_type` | string | `"id_card"` \| `"bank_account_doc"` \| `"unknown"` | 감지된 문서 유형 |
+| `decision` | string | `"pass"` \| `"retake"` \| `"review"` \| `"invalid_doc_type"` | 최종 판정 |
+| `reason` | string | 자유 텍스트 | 판정 사유 (한글 또는 영문) |
+| **quality** | | | |
+| `quality.blur_score` | float \| null | 0~∞ (높을수록 선명) | Laplacian variance. `< 100` → blur 판정 |
+| `quality.glare_detected` | bool \| null | 항상 `false` (MVP) | 글레어 감지 (현재 비활성) |
+| `quality.low_resolution_detected` | bool | `true` \| `false` | 가로 또는 세로 `< 100px` |
+| `quality.is_acceptable` | bool | `true` \| `false` | blur + resolution 종합 판단 |
+| **ocr** | | | |
+| `ocr.fields[]` | array | | 구조화된 필드 목록 |
+| `ocr.fields[].field_name` | string | 신분증: `"name"` `"id_number"` `"address"` `"issue_date"` <br> 통장: `"name"` `"account_number"` `"bank_name"` | 필드 식별자 |
+| `ocr.fields[].value` | string \| null | | 추출된 값. 추출 실패 시 `null` |
+| `ocr.fields[].confidence` | float | 0.0~1.0 | 라인 단위 OCR 신뢰도 |
+| `ocr.fields[].char_confidences[]` | array | `[{"char": "홍", "confidence": 0.98}, ...]` | 글자별 신뢰도 (CTC decoder 기반) |
+| `ocr.raw_text` | string \| null | | PaddleOCR 전체 인식 텍스트 |
+
+#### Response → Gate 영향도
+
+각 Response 필드가 어떤 Gate의 판정에 사용되는지를 나타냅니다.
+
+```
+                          Gate 1       Gate 2       Gate 3       Gate 4
+                          입력유효성   문서유형     필수정보     형식/신뢰도
+                          ─────────    ─────────    ─────────    ─────────
+quality.blur_score           ◈            ◇
+quality.low_resolution       ◈            ◇
+quality.is_acceptable        ◈            ◇
+
+ocr.raw_text                              ◈            ◇
+ocr.raw_text 내 키워드                    ◈
+ocr.raw_text 길이                                      ◈
+
+ocr.fields[].value                                     ◈            ◈
+ocr.fields[].confidence                                ◇            ◈
+ocr.fields[].char_confidences                                       ◈
+
+◈ = 판정에 직접 영향 (이 값에 따라 decision이 바뀜)
+◇ = 간접 참조 (판정 보조 또는 조건부 사용)
+```
+
+| 필드 | 영향 Gate | 영향 방식 |
+|------|-----------|-----------|
+| `quality.blur_score` | Gate 1, 2 | `< 100` → Gate 1에서 quality flag 기록. Gate 2에서 ambiguous + blur → **retake** |
+| `quality.low_resolution` | Gate 1, 2 | `< 100px` → Gate 1에서 flag. Gate 2에서 ambiguous + low_res → **retake** |
+| `ocr.raw_text` (키워드) | Gate 2 | `"주민등록증"` 등 키워드 존재 → 문서 유형 판별. 불일치 → **invalid_doc_type** |
+| `ocr.raw_text` (길이) | Gate 3 | `< 10자` → **retake** |
+| `ocr.fields[].value` (존재 여부) | Gate 3 | 필수 필드 전무 → **retake**, 일부 누락 → VLM reread → **review** |
+| `ocr.fields[].confidence` | Gate 3, 4 | 필드 신뢰도 임계값 미달 → VLM reread 대상 (Gate 3) 또는 **review** (Gate 4) |
+| `ocr.fields[].char_confidences` | Gate 4 | 글자별 `< 0.5` → **review** |
+| `id_number` 형식 | Gate 4 | `\d{6}-\d{7}` 불일치 → **review** |
 
 ### Decision Policy
 
@@ -175,6 +264,35 @@ curl -X POST http://localhost:8001/api/review/id-card \
 |------|------|-------------------|
 | 신분증 | name, id_number, address, issue_date | 0.6 / 0.7+형식 / 0.5 / 0.5 |
 | 통장사본 | name, account_number, bank_name | 0.6 / 0.7 / 0.5 |
+
+### 에러 처리 및 재시도
+
+#### 재시도 정책
+
+| 컴포넌트 | 최대 재시도 | 실패 시 동작 |
+|----------|------------|-------------|
+| **OCR** (PaddleOCR) | 2회 | `RuntimeError` → 503 응답 |
+| **VLM** (classify_document_type) | 2회 | `RuntimeError` → 503 응답 |
+| **VLM** (reread_fields) | 2회 | `RuntimeError` → 503 응답 |
+
+#### HTTP 상태 코드
+
+| 상태 코드 | 상황 | 클라이언트 대응 |
+|-----------|------|----------------|
+| **200** | 정상 처리 (pass/retake/review/invalid 모두 포함) | 응답의 `decision` 필드로 분기 |
+| **400** | 이미지가 아닌 파일 업로드 | 파일 형식 확인 후 재요청 |
+| **503** | OCR/VLM 재시도 전부 실패 (GPU 과부하 등) | 잠시 후 재시도 |
+| **500** | 예상치 못한 내부 에러 | 관리자 확인 필요 |
+
+#### SSE 스트리밍 에러
+
+```json
+{"type": "error", "message": "OCR failed after 2 attempts: ...", "retryable": true}
+{"type": "error", "message": "Internal error: ValueError", "retryable": false}
+```
+
+- `retryable: true` — 일시적 실패 (OCR/VLM 재시도 소진). 클라이언트가 재요청 가능
+- `retryable: false` — 내부 에러. 재시도해도 동일 실패 가능성 높음
 
 ### 성능 요약
 

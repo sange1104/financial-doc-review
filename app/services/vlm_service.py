@@ -1,7 +1,11 @@
+import logging
 import os
 
 from transformers import AutoModelForImageTextToText, AutoProcessor
 from qwen_vl_utils import process_vision_info
+
+logger = logging.getLogger(__name__)
+VLM_MAX_RETRIES = 2
 
 # 로컬 캐시가 있으면 로컬, 없으면 HuggingFace에서 다운로드
 VLM_BASE = os.environ.get("VLM_BASE", "/sdc/vissent/huggingface/hub")
@@ -123,9 +127,18 @@ def classify_document_type(image_path: str) -> tuple[str, str]:
         return_tensors="pt",
     ).to(model.device)
 
-    output_ids = model.generate(**inputs, max_new_tokens=60)
-    trimmed = output_ids[0][inputs.input_ids.shape[1]:]
-    response = processor.decode(trimmed, skip_special_tokens=True).strip()
+    last_error = None
+    for attempt in range(1, VLM_MAX_RETRIES + 1):
+        try:
+            output_ids = model.generate(**inputs, max_new_tokens=60)
+            trimmed = output_ids[0][inputs.input_ids.shape[1]:]
+            response = processor.decode(trimmed, skip_special_tokens=True).strip()
+            break
+        except Exception as e:
+            last_error = e
+            logger.warning("VLM classify attempt %d/%d failed: %s", attempt, VLM_MAX_RETRIES, e)
+    else:
+        raise RuntimeError(f"VLM classify failed after {VLM_MAX_RETRIES} attempts: {last_error}") from last_error
 
     lines = [l.strip() for l in response.splitlines() if l.strip()]
     first_line = lines[0].lower() if lines else ""
@@ -199,9 +212,18 @@ def reread_fields(image_path: str, fields: list[str]) -> dict[str, dict]:
         return_tensors="pt",
     ).to(model.device)
 
-    output_ids = model.generate(**inputs, max_new_tokens=120)
-    trimmed = output_ids[0][inputs.input_ids.shape[1]:]
-    response = processor.decode(trimmed, skip_special_tokens=True).strip()
+    last_error = None
+    for attempt in range(1, VLM_MAX_RETRIES + 1):
+        try:
+            output_ids = model.generate(**inputs, max_new_tokens=120)
+            trimmed = output_ids[0][inputs.input_ids.shape[1]:]
+            response = processor.decode(trimmed, skip_special_tokens=True).strip()
+            break
+        except Exception as e:
+            last_error = e
+            logger.warning("VLM reread attempt %d/%d failed: %s", attempt, VLM_MAX_RETRIES, e)
+    else:
+        raise RuntimeError(f"VLM reread failed after {VLM_MAX_RETRIES} attempts: {last_error}") from last_error
 
     # 파싱
     result: dict[str, dict] = {}

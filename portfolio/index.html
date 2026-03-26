@@ -25,6 +25,11 @@
     page-break-after: always; position: relative; overflow: hidden;
   }
   @media print { body { background: white; } .page { margin: 0; box-shadow: none; } }
+  /* Web view: keep A4 portrait, scale up to fill viewport */
+  @media screen {
+    body { background: var(--lg); }
+    .page { transform-origin: top center; }
+  }
   .pf {
     position: absolute; bottom: 8mm; left: var(--pad); right: var(--pad);
     display: flex; justify-content: space-between; font-size: 6.5pt; color: #94a3b8;
@@ -225,12 +230,46 @@
         </tbody>
       </table>
 
+      <h3>Response → Gate 영향도</h3>
+      <table>
+        <thead><tr><th>Response 필드</th><th style="text-align:center">G1</th><th style="text-align:center">G2</th><th style="text-align:center">G3</th><th style="text-align:center">G4</th><th>영향 방식</th></tr></thead>
+        <tbody>
+          <tr><td>quality.blur_score</td><td style="text-align:center">◈</td><td style="text-align:center">◇</td><td style="text-align:center"></td><td style="text-align:center"></td><td>&lt;100 → flag, ambiguous+blur → retake</td></tr>
+          <tr><td>quality.low_resolution</td><td style="text-align:center">◈</td><td style="text-align:center">◇</td><td style="text-align:center"></td><td style="text-align:center"></td><td>&lt;100px → flag, ambiguous+lowres → retake</td></tr>
+          <tr><td>ocr.raw_text (키워드)</td><td style="text-align:center"></td><td style="text-align:center">◈</td><td style="text-align:center"></td><td style="text-align:center"></td><td>문서 유형 판별. 불일치 → invalid</td></tr>
+          <tr><td>ocr.raw_text (길이)</td><td style="text-align:center"></td><td style="text-align:center"></td><td style="text-align:center">◈</td><td style="text-align:center"></td><td>&lt;10자 → retake</td></tr>
+          <tr><td>fields[].value 존재</td><td style="text-align:center"></td><td style="text-align:center"></td><td style="text-align:center">◈</td><td style="text-align:center">◈</td><td>전무 → retake, 일부 누락 → VLM reread</td></tr>
+          <tr><td>fields[].confidence</td><td style="text-align:center"></td><td style="text-align:center"></td><td style="text-align:center">◇</td><td style="text-align:center">◈</td><td>임계값 미달 → review</td></tr>
+          <tr><td>fields[].char_confidences</td><td style="text-align:center"></td><td style="text-align:center"></td><td style="text-align:center"></td><td style="text-align:center">◈</td><td>글자별 &lt;0.5 → review</td></tr>
+          <tr><td>id_number 형식</td><td style="text-align:center"></td><td style="text-align:center"></td><td style="text-align:center"></td><td style="text-align:center">◈</td><td>\d{6}-\d{7} 불일치 → review</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:5.5pt;color:var(--gray);margin-top:1mm;">◈ 직접 영향 (판정 변경) &nbsp; ◇ 간접 참조 (조건부 사용)</p>
+
       <h3>서비스/운영 관점</h3>
       <ol class="nlist">
         <li>Request path를 <strong>OCR-only / VLM fallback</strong>으로 분리하여 latency/cost trade-off 관리</li>
         <li><strong>2단계 SSE 스트리밍</strong>으로 OCR 결과 즉시 표시 → VLM 보완 후속 전송. 사용자 체감 대기 최소화</li>
         <li>FastAPI 기반 서비스 구조로 외부 GPU 환경 배포 가능한 형태로 구조화</li>
       </ol>
+
+      <h3>에러 처리 및 재시도</h3>
+      <table>
+        <thead><tr><th>컴포넌트</th><th>재시도</th><th>실패 시</th></tr></thead>
+        <tbody>
+          <tr><td>OCR (PaddleOCR)</td><td>최대 2회</td><td>503 Service Unavailable</td></tr>
+          <tr><td>VLM (classify / reread)</td><td>최대 2회</td><td>503 Service Unavailable</td></tr>
+        </tbody>
+      </table>
+      <table style="margin-top:1.5mm;">
+        <thead><tr><th>HTTP 상태</th><th>상황</th><th>클라이언트 대응</th></tr></thead>
+        <tbody>
+          <tr><td><b>200</b></td><td>정상 (pass/retake/review/invalid 모두)</td><td><code>decision</code> 필드로 분기</td></tr>
+          <tr><td><b>400</b></td><td>이미지 아닌 파일</td><td>파일 형식 확인</td></tr>
+          <tr><td><b>503</b></td><td>OCR/VLM 재시도 소진</td><td>잠시 후 재시도</td></tr>
+          <tr><td><b>500</b></td><td>내부 에러</td><td>관리자 확인</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -480,5 +519,19 @@
   </div>
 </div>
 
+<script>
+// Auto-scale A4 pages to fit viewport width
+(function(){
+  if(window.matchMedia('print').matches) return;
+  function scale(){
+    var pw = 210 * 3.7795; // 210mm in px
+    var vw = document.documentElement.clientWidth;
+    var s = Math.min(vw / (pw + 40), 1.8); // cap at 1.8x, 40px breathing room
+    document.querySelectorAll('.page').forEach(function(p){ p.style.transform = 'scale('+s+')'; p.style.marginBottom = (p.offsetHeight*(s-1))+'px'; });
+  }
+  scale();
+  window.addEventListener('resize', scale);
+})();
+</script>
 </body>
 </html>
